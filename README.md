@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 우주딜러 (Wooju Dealer)
 
-## Getting Started
+B2B 폐PC 수거 → 보안삭제(DoD 5220.22-M) → 인증서 자동발급 **원스톱 플랫폼 PoC**.
+기업이 버리는 PC가 환경부담 없이 처리됐다는 법적 증빙(인증서)을 즉시 받을 수 있습니다.
 
-First, run the development server:
+> 울주군 기술창업 생태계 지원사업 — 기술개발 패키지 / 주식회사 우주시스템
+
+## 기술 스택
+
+| 영역 | 사용 |
+|---|---|
+| 프레임워크 | Next.js 16 (App Router) + React 19 + TypeScript |
+| 스타일 | Tailwind CSS v4 + shadcn/ui (Radix UI) |
+| 차트 / PDF | Chart.js · jsPDF + html2canvas-pro · qrcode |
+| 데이터 | localStorage mock (PoC) — 백엔드 없이 클라이언트에서 동작 |
+
+## 시작하기
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+[http://localhost:3000](http://localhost:3000) 접속.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 시연 시나리오
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+① PC방 사장님 (주 경로)
+   로그인 → 수거 신청(3-step) → 신청 현황 → 인증서 PDF 다운로드
 
-## Learn More
+② 기업 ESG 담당자
+   ESG 대시보드 → 탄소절감·회수가치 확인 → 리포트 PDF
 
-To learn more about Next.js, take a look at the following resources:
+③ 운영자
+   운영자 데모 로그인 → 관리자 → 신청 status 변경
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+로그인은 데모용 mock입니다 — 소셜 버튼 클릭 시 체험 계정으로 로그인됩니다.
+하단 푸터의 **데모 리셋**으로 초기 상태(회사 3곳·신청 10건)로 되돌릴 수 있습니다.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 화면 (9)
 
-## Deploy on Vercel
+| ID | 화면 | 경로 |
+|---|---|---|
+| M01 | 메인 랜딩 | `/` |
+| A01 | 로그인 | `/login` |
+| A02 | 마이페이지 | `/me` |
+| F01 | 수거 신청 (3-step) | `/requests/new` |
+| F02 | 신청 현황 | `/requests` |
+| F03 | 인증서 | `/requests/[id]/certificate` |
+| F04 | ESG 대시보드 | `/dashboard` |
+| AD01 | 관리자 | `/admin` |
+| S01 | FAQ + 약관 | `/support` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 처리 상태 흐름
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+requested → pickup → wiping → certified → done
+```
+
+`certified` 도달 시 인증서 PDF 다운로드가 활성화됩니다.
