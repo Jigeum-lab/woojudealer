@@ -1,14 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
   Check,
+  CircuitBoard,
   Coins,
+  Cpu,
+  Fan,
   FileCheck2,
+  HardDrive,
   Leaf,
+  MemoryStick,
+  Monitor,
+  Power,
   Radar,
   Recycle,
+  Server,
   ShieldCheck,
   Truck,
   Zap,
@@ -17,6 +26,18 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
+
+const PART_ICONS = [
+  { type: "svg" as const, src: "/wooju/parts/cpu.svg" },
+  { type: "icon" as const, Icon: CircuitBoard },
+  { type: "icon" as const, Icon: MemoryStick },
+  { type: "icon" as const, Icon: Monitor },
+  { type: "svg" as const, src: "/wooju/parts/HDD.svg" },
+  { type: "svg" as const, src: "/wooju/parts/SSD.svg" },
+  { type: "icon" as const, Icon: Power },
+  { type: "icon" as const, Icon: Server },
+  { type: "icon" as const, Icon: Fan },
+];
 
 const VALUES = [
   {
@@ -30,46 +51,46 @@ const VALUES = [
   {
     icon: Radar,
     metric: "100%",
-    color: "text-cta",
+    color: "text-primary",
     title: "실시간 투명성",
     desc: "수거→삭제→인증까지 모든 단계를 실시간 추적. QR 코드 검증 인증서를 발급합니다.",
-    bar: "bg-cta",
+    bar: "bg-primary",
   },
   {
     icon: Coins,
     metric: "40x",
-    color: "text-success",
+    color: "text-primary",
     title: "비용 절감",
     desc: "기존 5천원짜리 폐기 비용 대신, 대당 최대 20만원의 회수 가치를 창출합니다.",
-    bar: "bg-success",
+    bar: "bg-primary",
   },
   {
     icon: Leaf,
     metric: "ESG",
-    color: "text-violet-500",
+    color: "text-primary",
     title: "환경 기여",
     desc: "탄소 절감 수치와 처리 이력을 ESG 보고서 형태로 즉시 제공합니다.",
-    bar: "bg-violet-500",
+    bar: "bg-primary",
   },
 ];
 
 const PROCESS = [
-  { icon: Truck, bg: "bg-blue-50 text-primary", name: "수거", desc: "24시간 내 픽업" },
+  { icon: Truck, bg: "bg-brand-green-soft text-primary", name: "수거", desc: "24시간 내 픽업" },
   {
     icon: ShieldCheck,
-    bg: "bg-amber-50 text-amber-600",
+    bg: "bg-brand-green-soft text-primary",
     name: "보안삭제",
     desc: "DoD 5220.22-M",
   },
   {
     icon: Recycle,
-    bg: "bg-green-50 text-success",
+    bg: "bg-brand-green-soft text-primary",
     name: "리퍼·업사이클",
     desc: "자원 가치화",
   },
   {
     icon: FileCheck2,
-    bg: "bg-violet-50 text-violet-500",
+    bg: "bg-brand-green-soft text-primary",
     name: "인증서 발급",
     desc: "PDF 즉시 다운로드",
   },
@@ -92,19 +113,36 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#EFF6FF_0%,#F8FAFC_50%,#FFF7ED_100%)] py-24 text-center">
+      {/* Hero — 다크 + 네온 그린 (기존 우주딜러 OG 톤) */}
+      <section className="relative overflow-hidden bg-background py-24 text-center">
+        {/* 글로우 백드롭 */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-0 size-[720px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/15 blur-[120px]" />
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage:
+                "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }}
+          />
+        </div>
+
         <div className="relative z-10 mx-auto max-w-[1280px] px-10">
-          <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-[13px] font-semibold text-primary shadow-sm">
-            <span className="size-1.5 rounded-full bg-success" />
+          <div className="mb-6 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/30 bg-brand-green-soft px-3.5 py-1.5 text-[13px] font-semibold text-primary">
+            <span className="size-1.5 shrink-0 rounded-full bg-primary" />
             DoD 5220.22-M 미 국방부 표준 적용
           </div>
-          <h1 className="mb-5 text-[56px] font-extrabold leading-[1.15] tracking-[-0.02em] text-foreground">
+          <h1 className="mb-5 text-[56px] font-black leading-[1.15] tracking-[-0.02em] text-foreground">
             전화 한 통으로, 24시간 내에,
             <br />
-            폐PC의 <span className="text-primary">100%를 가치화</span>한다
+            폐PC의{" "}
+            <span className="text-primary [text-shadow:0_0_32px_rgba(0,213,99,0.4)]">
+              100%를 가치화
+            </span>
+            한다
           </h1>
-          <p className="mx-auto mb-10 max-w-[520px] text-lg text-text-secondary">
+          <p className="mx-auto mb-10 max-w-[680px] text-lg text-text-secondary">
             B2B 폐PC 원스톱 업사이클링 플랫폼 — 수거에서 보안삭제 인증서까지
           </p>
           <div className="mb-14 flex justify-center gap-3">
@@ -117,21 +155,43 @@ export default function LandingPage() {
               <Link href="#process">서비스 소개 보기</Link>
             </Button>
           </div>
-          <div className="flex items-center justify-center gap-6 text-[13px] text-text-muted">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[13px] text-text-muted">
             {TRUST.map((t) => (
               <div key={t} className="flex items-center gap-1.5">
-                <span className="flex size-4 items-center justify-center rounded-full bg-success text-white">
+                <span className="flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Check className="size-2.5 stroke-[3]" />
                 </span>
                 {t}
               </div>
             ))}
           </div>
+
+          {/* OG 톤 라인아트 부품 띠 */}
+          <div className="mt-16 flex items-center justify-center gap-7 text-primary/80">
+            {PART_ICONS.map((p, i) =>
+              p.type === "svg" ? (
+                <Image
+                  key={i}
+                  src={p.src}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 opacity-90 transition-opacity hover:opacity-100"
+                />
+              ) : (
+                <p.Icon
+                  key={i}
+                  className="size-8 opacity-90 transition-opacity hover:opacity-100"
+                  strokeWidth={1.5}
+                />
+              )
+            )}
+          </div>
         </div>
       </section>
 
       {/* Value cards */}
-      <section className="bg-white py-[72px]">
+      <section className="bg-card py-[72px]">
         <div className="mx-auto max-w-[1280px] px-10">
           <SectionHeader
             eyebrow="핵심 가치"
@@ -142,11 +202,11 @@ export default function LandingPage() {
             {VALUES.map((v) => (
               <div
                 key={v.title}
-                className="relative overflow-hidden rounded-xl border-[1.5px] border-border bg-background p-7 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                className="group relative overflow-hidden rounded-xl border border-border bg-background p-7 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_0_32px_-8px_rgba(0,213,99,0.4)]"
               >
-                <span className={`absolute inset-x-0 top-0 h-[3px] ${v.bar}`} />
+                <span className={`absolute inset-x-0 top-0 h-[2px] ${v.bar}`} />
                 <v.icon className={`mb-4 size-8 ${v.color}`} strokeWidth={2} />
-                <div className={`mb-1.5 text-4xl font-extrabold leading-none ${v.color}`}>
+                <div className={`mb-1.5 text-4xl font-black leading-none ${v.color}`}>
                   {v.metric}
                 </div>
                 <div className="mb-2 text-base font-bold">{v.title}</div>
@@ -167,12 +227,12 @@ export default function LandingPage() {
             title="4단계 원스톱 처리"
             sub="신청부터 인증서 발급까지 모든 과정을 추적할 수 있습니다"
           />
-          <div className="rounded-xl border border-border bg-white p-10 shadow-md">
+          <div className="rounded-xl border border-border bg-card p-10">
             <div className="flex items-center">
               {PROCESS.map((p, i) => (
                 <div key={p.name} className="relative flex-1 px-3 text-center">
                   <div
-                    className={`mx-auto mb-2.5 flex size-14 items-center justify-center rounded-2xl ${p.bg}`}
+                    className={`mx-auto mb-2.5 flex size-14 items-center justify-center rounded-2xl ring-1 ring-primary/20 ${p.bg}`}
                   >
                     <p.icon className="size-6" />
                   </div>
@@ -191,23 +251,22 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[linear-gradient(135deg,#2563EB_0%,#1D4ED8_100%)] py-20 text-center text-white">
-        <div className="mx-auto max-w-[1280px] px-10">
-          <h2 className="mb-3.5 text-[38px] font-extrabold tracking-[-0.01em]">
+      <section className="relative overflow-hidden bg-card py-20 text-center">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-1/2 size-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[100px]" />
+        </div>
+        <div className="relative z-10 mx-auto max-w-[1280px] px-10">
+          <h2 className="mb-3.5 text-[38px] font-black tracking-[-0.01em] text-foreground">
             지금 바로 무료로 시작하세요
           </h2>
-          <p className="mb-9 text-[17px] opacity-85">
+          <p className="mb-9 text-[17px] text-text-secondary">
             견적 문의부터 인증서 발급까지, 모든 것이 무료입니다
           </p>
           <div className="flex justify-center gap-3">
-            <Button asChild variant="white" size="xl">
+            <Button asChild variant="cta" size="xl">
               <Link href={requestHref}>지금 무료로 견적 받기</Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              className="border-[1.5px] border-white/30 bg-white/10 text-white hover:bg-white/20"
-            >
+            <Button asChild variant="outline" size="lg">
               <Link href="/support">FAQ 보기</Link>
             </Button>
           </div>
@@ -215,7 +274,7 @@ export default function LandingPage() {
             {CERT_BADGES.map((b) => (
               <span
                 key={b}
-                className="rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-xs font-semibold"
+                className="rounded-full border border-primary/30 bg-brand-green-soft px-3.5 py-1.5 text-xs font-semibold text-primary"
               >
                 {b}
               </span>

@@ -127,7 +127,7 @@ export default function CertificatePage({
       <div className="flex justify-center">
         <div
           ref={sheetRef}
-          className="relative w-[794px] bg-white px-16 py-14 shadow-lg"
+          className="relative w-[794px] bg-card px-16 py-14 shadow-lg"
           style={{ aspectRatio: "210 / 297" }}
         >
           {/* Border frame */}
@@ -149,7 +149,7 @@ export default function CertificatePage({
               <p className="mt-1 text-sm tracking-[0.3em] text-text-muted">
                 CERTIFICATE OF SECURE DATA DESTRUCTION
               </p>
-              <div className="mx-auto mt-4 inline-block rounded-full bg-blue-50 px-4 py-1.5 font-mono text-sm font-bold text-primary">
+              <div className="mx-auto mt-4 inline-block rounded-full bg-brand-green-soft px-4 py-1.5 font-mono text-sm font-bold text-primary">
                 {cert.certNo}
               </div>
             </div>

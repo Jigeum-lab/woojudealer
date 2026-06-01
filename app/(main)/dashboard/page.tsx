@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="border-b border-border bg-white py-5">
+      <div className="border-b border-border bg-card py-5">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
           <div>
             <h1 className="text-[22px] font-bold text-foreground">ESG 대시보드</h1>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
 
       <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
         {processed.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong bg-white py-20 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong bg-card py-20 text-center">
             <BarChart3 className="mb-4 size-12 text-border-strong" />
             <p className="mb-1 text-base font-semibold text-foreground">
               처리 데이터가 아직 없습니다
@@ -158,21 +158,21 @@ export default function DashboardPage() {
             <div className="grid grid-cols-3 gap-4">
               <KpiCard
                 icon={Cpu}
-                iconClass="bg-blue-50 text-primary"
+                iconClass="bg-brand-green-soft text-primary"
                 label="총 처리 대수"
                 value={`${formatNumber(totalPc)}대`}
                 sub={`${processed.length}건 처리 완료`}
               />
               <KpiCard
                 icon={Leaf}
-                iconClass="bg-green-50 text-success"
+                iconClass="bg-brand-green-soft text-success"
                 label="탄소 절감"
                 value={formatWeight(carbon)}
                 sub={`대당 ${CARBON_PER_PC}kgCO₂ 절감 기준`}
               />
               <KpiCard
                 icon={Coins}
-                iconClass="bg-amber-50 text-cta"
+                iconClass="bg-brand-green-soft text-cta"
                 label="회수 가치"
                 value={formatKRW(value)}
                 sub={`대당 ${formatKRW(VALUE_PER_PC)} 기준`}
@@ -181,7 +181,7 @@ export default function DashboardPage() {
 
             {/* Charts */}
             <div className="grid grid-cols-[1.6fr_1fr] gap-4">
-              <div className="rounded-xl border border-border bg-white p-6">
+              <div className="rounded-xl border border-border bg-card p-6">
                 <h2 className="mb-4 text-base font-bold text-foreground">
                   월별 처리 트렌드
                 </h2>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-white p-6">
+              <div className="rounded-xl border border-border bg-card p-6">
                 <h2 className="mb-4 text-base font-bold text-foreground">
                   처리 단계별 분포
                 </h2>
@@ -267,7 +267,7 @@ function KpiCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-medium text-text-secondary">{label}</span>
         <span

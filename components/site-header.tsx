@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -40,13 +41,17 @@ export function SiteHeader() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-white">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-extrabold text-white">
-            W
-          </span>
-          <span className="text-lg font-bold text-primary">우주딜러</span>
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image
+            src="/wooju/logo.svg"
+            alt="우주딜러"
+            width={74}
+            height={28}
+            priority
+            className="h-6 w-auto"
+          />
         </Link>
 
         <nav className="flex items-center gap-1">

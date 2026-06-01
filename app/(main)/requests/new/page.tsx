@@ -106,7 +106,7 @@ export default function NewRequestPage() {
 
   return (
     <>
-      <div className="border-b border-border bg-white py-5">
+      <div className="border-b border-border bg-card py-5">
         <div className="mx-auto max-w-[1280px] px-10">
           <h1 className="text-[22px] font-bold text-foreground">수거 신청</h1>
         </div>
@@ -114,7 +114,7 @@ export default function NewRequestPage() {
 
       <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
         {/* Stepper */}
-        <div className="mb-8 flex overflow-hidden rounded-xl border border-border bg-white">
+        <div className="mb-8 flex overflow-hidden rounded-xl border border-border bg-card">
           {STEPS.map((s) => {
             const state =
               s.n < step ? "done" : s.n === step ? "active" : "pending";
@@ -123,8 +123,8 @@ export default function NewRequestPage() {
                 key={s.n}
                 className={cn(
                   "flex flex-1 flex-col gap-1 border-r border-border px-6 py-5 last:border-r-0",
-                  state === "active" && "bg-blue-50",
-                  state === "done" && "bg-green-50"
+                  state === "active" && "bg-brand-green-soft",
+                  state === "done" && "bg-brand-green-soft"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -158,8 +158,8 @@ export default function NewRequestPage() {
 
         <div className="grid grid-cols-[1fr_360px] items-start gap-8">
           {/* Form */}
-          <div className="overflow-hidden rounded-xl border border-border bg-white">
-            <div className="border-b border-border bg-blue-50 px-7 py-5">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-b border-border bg-brand-green-soft px-7 py-5">
               <div className="flex items-center gap-2.5 text-base font-bold text-primary">
                 <span className="flex size-7 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white">
                   {step}
@@ -246,7 +246,7 @@ export default function NewRequestPage() {
           </div>
 
           {/* Summary sidebar */}
-          <div className="sticky top-[88px] overflow-hidden rounded-xl border border-border bg-white">
+          <div className="sticky top-[88px] overflow-hidden rounded-xl border border-border bg-card">
             <div className="border-b border-border bg-secondary px-5 py-4">
               <div className="text-sm font-bold text-foreground">신청 요약</div>
             </div>
@@ -276,11 +276,11 @@ export default function NewRequestPage() {
                 </div>
               )}
 
-              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3">
+              <div className="mt-4 rounded-md border border-primary/30 bg-brand-green-soft px-4 py-3">
                 <div className="mb-2 text-xs font-semibold text-primary">
                   진행 상황 — {step}/3 단계
                 </div>
-                <div className="h-1.5 rounded-full bg-blue-200">
+                <div className="h-1.5 rounded-full bg-primary/30">
                   <div
                     className="h-1.5 rounded-full bg-primary transition-all"
                     style={{ width: `${progress}%` }}

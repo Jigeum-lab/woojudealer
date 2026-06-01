@@ -30,10 +30,10 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="mt-auto bg-foreground py-8 text-text-muted">
+    <footer className="mt-auto border-t border-border bg-card py-8 text-text-muted">
       <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-6 px-10">
         <div className="text-[13px]">
-          <div className="mb-1.5 font-bold text-white">
+          <div className="mb-1.5 font-bold text-foreground">
             우주딜러 (주식회사 우주시스템)
           </div>
           <div>
@@ -42,19 +42,19 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="flex items-center gap-5 text-[13px]">
-          <Link href="/support#terms" className="hover:text-white">
+          <Link href="/support#terms" className="hover:text-primary">
             이용약관
           </Link>
-          <Link href="/support#privacy" className="hover:text-white">
+          <Link href="/support#privacy" className="hover:text-primary">
             개인정보처리방침
           </Link>
-          <Link href="/support" className="hover:text-white">
+          <Link href="/support" className="hover:text-primary">
             FAQ
           </Link>
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-primary/50 hover:bg-brand-green-soft hover:text-primary"
           >
             <RotateCcw className="size-3.5" />
             데모 리셋

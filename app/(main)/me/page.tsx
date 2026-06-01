@@ -61,10 +61,10 @@ export default function MyPage() {
       <h1 className="mb-6 text-[22px] font-bold text-foreground">마이페이지</h1>
 
       {/* Account card */}
-      <div className="mb-6 rounded-xl border border-border bg-white p-6">
+      <div className="mb-6 rounded-xl border border-border bg-card p-6">
         <h2 className="mb-4 text-sm font-bold text-text-secondary">계정 정보</h2>
         <div className="flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-full bg-blue-50 text-lg font-bold text-primary">
+          <div className="flex size-12 items-center justify-center rounded-full bg-brand-green-soft text-lg font-bold text-primary">
             {user.name.charAt(0)}
           </div>
           <div className="flex-1">
@@ -82,7 +82,7 @@ export default function MyPage() {
 
       {/* Company form */}
       {form ? (
-        <div className="rounded-xl border border-border bg-white p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-5 text-sm font-bold text-text-secondary">회사 정보</h2>
           <div className="flex flex-col gap-4">
             <Field label="회사명">
@@ -140,7 +140,7 @@ export default function MyPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border-strong bg-white p-8 text-center text-sm text-text-secondary">
+        <div className="rounded-xl border border-dashed border-border-strong bg-card p-8 text-center text-sm text-text-secondary">
           운영자 계정은 회사 정보가 없습니다.
         </div>
       )}

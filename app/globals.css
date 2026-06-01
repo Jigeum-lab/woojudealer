@@ -6,46 +6,55 @@
 :root {
   --radius: 0.625rem;
 
-  /* shadcn semantic tokens (mapped to 우주딜러 design system) */
-  --background: #f8fafc;
-  --foreground: #1e293b;
-  --card: #ffffff;
-  --card-foreground: #1e293b;
-  --popover: #ffffff;
-  --popover-foreground: #1e293b;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #1e293b;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #1e293b;
+  /* 우주딜러 — Dark + Neon Green (OG 기반) */
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --card: #141414;
+  --card-foreground: #f5f5f5;
+  --popover: #1a1a1a;
+  --popover-foreground: #f5f5f5;
+  --primary: #00D563;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1a1a1a;
+  --muted-foreground: #9ca3af;
+  --accent: #1f1f1f;
+  --accent-foreground: #f5f5f5;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #2563eb;
+  --border: #262626;
+  --input: #1f1f1f;
+  --ring: #00D563;
 
   /* 우주딜러 brand + status tokens */
-  --primary-hover: #1d4ed8;
-  --brand-blue: #3b82f6;
-  --cta: #f97316;
-  --cta-foreground: #ffffff;
-  --cta-hover: #ea6c00;
-  --bg-subtle: #f1f5f9;
-  --text-secondary: #475569;
+  --primary-hover: #00b855;
+  --brand-green: #00D563;
+  --brand-green-soft: rgba(0, 213, 99, 0.12);
+  --cta: #00D563;
+  --cta-foreground: #0a0a0a;
+  --cta-hover: #00b855;
+  --bg-subtle: #141414;
+  --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
-  --border-strong: #cbd5e1;
-  --success: #22c55e;
+  --border-strong: #404040;
+  --success: #00D563;
   --warning: #f59e0b;
-  --info: #3b82f6;
+  --info: #38bdf8;
 
   --status-requested: #94a3b8;
   --status-pickup: #f59e0b;
-  --status-wiping: #3b82f6;
-  --status-certified: #22c55e;
-  --status-done: #6366f1;
+  --status-wiping: #38bdf8;
+  --status-certified: #00D563;
+  --status-done: #a78bfa;
+}
+
+/* SDSwagger — 우주딜러 워드마크 폰트 (로고/숫자 강조용) */
+@font-face {
+  font-family: "SDSwagger";
+  src: url("/wooju/fonts/SDSwaggerTTF.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
 }
 
 @theme inline {
@@ -72,7 +81,8 @@
   --color-cta: var(--cta);
   --color-cta-foreground: var(--cta-foreground);
   --color-cta-hover: var(--cta-hover);
-  --color-brand-blue: var(--brand-blue);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-soft: var(--brand-green-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
@@ -91,7 +101,8 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: var(--font-jakarta), "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-sans: var(--font-noto), "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-display: "SDSwagger", var(--font-noto), "Pretendard Variable", Pretendard, system-ui, sans-serif;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;

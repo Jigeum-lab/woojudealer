@@ -43,7 +43,7 @@ const SOCIALS: {
   {
     provider: "google",
     label: "Google로 계속하기",
-    className: "border-[1.5px] border-border bg-white text-foreground hover:bg-secondary",
+    className: "border-[1.5px] border-border bg-card text-foreground hover:bg-secondary",
     icon: <GoogleIcon />,
   },
   {

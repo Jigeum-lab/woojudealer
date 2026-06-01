@@ -111,7 +111,7 @@ export default function AdminPage() {
 
   return (
     <>
-      <div className="border-b border-border bg-white py-5">
+      <div className="border-b border-border bg-card py-5">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
           <h1 className="text-[22px] font-bold text-foreground">관리자 대시보드</h1>
           <Button variant="outline" onClick={reload}>
@@ -130,7 +130,7 @@ export default function AdminPage() {
         </div>
 
         {/* Chart */}
-        <div className="mb-6 rounded-xl border border-border bg-white p-6">
+        <div className="mb-6 rounded-xl border border-border bg-card p-6">
           <h2 className="mb-4 text-base font-bold text-foreground">
             처리 단계별 현황
           </h2>
@@ -162,7 +162,7 @@ export default function AdminPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-border bg-white">
+        <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center gap-3 border-b border-border p-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
@@ -276,7 +276,7 @@ function SummaryCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-1.5 text-sm font-medium text-text-secondary">{label}</div>
       <div className={`text-[28px] font-extrabold leading-none ${accent}`}>
         {value}

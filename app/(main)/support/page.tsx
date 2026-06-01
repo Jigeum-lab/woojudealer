@@ -57,7 +57,7 @@ export default function SupportPage() {
 
   return (
     <>
-      <div className="border-b border-border bg-white py-5">
+      <div className="border-b border-border bg-card py-5">
         <div className="mx-auto max-w-[860px] px-10">
           <h1 className="text-[22px] font-bold text-foreground">고객 지원</h1>
           <p className="mt-0.5 text-sm text-text-secondary">
@@ -75,7 +75,7 @@ export default function SupportPage() {
           </TabsList>
 
           <TabsContent value="faq">
-            <div className="rounded-xl border border-border bg-white px-6">
+            <div className="rounded-xl border border-border bg-card px-6">
               <Accordion type="single" collapsible>
                 {FAQS.map((f, i) => (
                   <AccordionItem key={i} value={`faq-${i}`}>
@@ -86,7 +86,7 @@ export default function SupportPage() {
               </Accordion>
             </div>
 
-            <div className="mt-6 flex items-center justify-between rounded-xl border border-border bg-blue-50 px-6 py-5">
+            <div className="mt-6 flex items-center justify-between rounded-xl border border-border bg-brand-green-soft px-6 py-5">
               <div>
                 <div className="text-base font-bold text-foreground">
                   원하는 답변을 찾지 못하셨나요?
@@ -126,7 +126,7 @@ function LegalDoc({
   sections: { h: string; p: string }[];
 }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-8">
+    <div className="rounded-xl border border-border bg-card p-8">
       <h2 className="mb-6 text-xl font-bold text-foreground">{title}</h2>
       <div className="flex flex-col gap-6">
         {sections.map((s, i) => (

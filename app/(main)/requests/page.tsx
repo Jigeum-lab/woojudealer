@@ -78,7 +78,7 @@ function RequestsInner() {
 
   return (
     <>
-      <div className="border-b border-border bg-white py-5">
+      <div className="border-b border-border bg-card py-5">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
           <h1 className="text-[22px] font-bold text-foreground">
             {user.role === "admin" ? "전체 신청 현황" : "내 신청"}
@@ -125,7 +125,7 @@ function RequestsInner() {
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="h-20 animate-pulse rounded-xl border border-border bg-white"
+                className="h-20 animate-pulse rounded-xl border border-border bg-card"
               />
             ))}
           </div>
@@ -153,7 +153,7 @@ function RequestsInner() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong bg-white py-20 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong bg-card py-20 text-center">
       <Inbox className="mb-4 size-12 text-border-strong" />
       <p className="mb-1 text-base font-semibold text-foreground">
         아직 신청이 없어요
@@ -198,7 +198,7 @@ function RequestCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-sm">
       <button
         type="button"
         onClick={onToggle}
@@ -229,7 +229,7 @@ function RequestCard({
         <div className="border-t border-border bg-secondary/40 px-6 py-6">
           <ProcessStepper current={request.status} />
 
-          <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2.5 rounded-lg border border-border bg-white p-5 text-sm">
+          <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2.5 rounded-lg border border-border bg-card p-5 text-sm">
             <Info label="PC 수량" value={`${request.items.quantity}대`} />
             <Info label="제조사" value={request.items.manufacturer} />
             <Info label="연식" value={request.items.age} />
@@ -304,7 +304,7 @@ function ProcessStepper({ current }: { current: CollectionRequest["status"] }) {
                     "bg-primary text-white ring-4 ring-primary/15",
                   state === "done" && "bg-success text-white",
                   state === "pending" &&
-                    "border-2 border-border bg-white text-text-muted"
+                    "border-2 border-border bg-card text-text-muted"
                 )}
               >
                 {i + 1}
