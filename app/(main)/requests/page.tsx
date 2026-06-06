@@ -14,19 +14,15 @@ import {
 } from "lucide-react";
 
 import { useAuth, useRequireAuth } from "@/lib/auth-context";
-import {
-  advanceRequest,
-  getAllRequests,
-  getCompany,
-  getRequestsByCompany,
-} from "@/lib/store";
+import { fetchAllRequests, advanceRequest, statusReached } from "@/lib/db/requests";
+import { fetchCompanies } from "@/lib/db/companies";
 import {
   CollectionRequest,
+  Company,
   STATUS_META,
   STATUS_ORDER,
 } from "@/lib/types";
 import { formatDate } from "@/lib/format";
-import { statusReached } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,24 +37,21 @@ function RequestsInner() {
   const focusId = params.get("focus");
 
   const [requests, setRequests] = useState<CollectionRequest[]>([]);
+  const [companiesMap, setCompaniesMap] = useState<Record<string, Company>>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [expanded, setExpanded] = useState<string | null>(focusId);
   const [ready, setReady] = useState(false);
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    const list =
-      user.role === "admin"
-        ? getAllRequests()
-        : getRequestsByCompany(user.companyId);
-    setRequests(list);
+    const [reqs, cos] = await Promise.all([fetchAllRequests(), fetchCompanies()]);
+    setRequests(reqs);
+    setCompaniesMap(Object.fromEntries(cos.map((c) => [c.id, c])));
     setReady(true);
   }, [user]);
 
   useEffect(() => {
     reload();
-    window.addEventListener("wj:change", reload);
-    return () => window.removeEventListener("wj:change", reload);
   }, [reload]);
 
   if (!authorized || !user) {
@@ -138,10 +131,12 @@ function RequestsInner() {
                 key={r.id}
                 request={r}
                 showCompany={user.role === "admin"}
+                companiesMap={companiesMap}
                 expanded={expanded === r.id}
                 onToggle={() =>
                   setExpanded((cur) => (cur === r.id ? null : r.id))
                 }
+                onAdvanced={reload}
               />
             ))}
           </div>
@@ -173,28 +168,37 @@ function EmptyState() {
 function RequestCard({
   request,
   showCompany,
+  companiesMap,
   expanded,
   onToggle,
+  onAdvanced,
 }: {
   request: CollectionRequest;
   showCompany: boolean;
+  companiesMap: Record<string, Company>;
   expanded: boolean;
   onToggle: () => void;
+  onAdvanced: () => void;
 }) {
   const router = useRouter();
   const [advancing, setAdvancing] = useState(false);
   const meta = STATUS_META[request.status];
-  const company = getCompany(request.companyId);
+  const company = companiesMap[request.companyId];
   const canCertificate = statusReached(request.status, "certified");
   const isDone = request.status === "done";
 
-  function handleAdvance() {
+  async function handleAdvance() {
     setAdvancing(true);
-    const updated = advanceRequest(request.id);
-    setTimeout(() => {
+    try {
+      const updated = await advanceRequest(request.id);
+      if (updated)
+        toast.success(`상태가 '${STATUS_META[updated.status].label}'로 변경되었습니다`);
+      onAdvanced();
+    } catch {
+      toast.error("상태 변경에 실패했습니다");
+    } finally {
       setAdvancing(false);
-      if (updated) toast.success(`상태가 '${STATUS_META[updated.status].label}'로 변경되었습니다`);
-    }, 300);
+    }
   }
 
   return (
@@ -248,11 +252,7 @@ function RequestCard({
             <Button
               variant="outline"
               disabled={!canCertificate}
-              title={
-                canCertificate
-                  ? undefined
-                  : "보안삭제 완료 후 발급됩니다"
-              }
+              title={canCertificate ? undefined : "보안삭제 완료 후 발급됩니다"}
               onClick={() =>
                 router.push(`/requests/${request.id}/certificate`)
               }
@@ -293,7 +293,8 @@ function ProcessStepper({ current }: { current: CollectionRequest["status"] }) {
   return (
     <div className="flex items-start">
       {STATUS_ORDER.map((s, i) => {
-        const state = i < currentIdx ? "done" : i === currentIdx ? "active" : "pending";
+        const state =
+          i < currentIdx ? "done" : i === currentIdx ? "active" : "pending";
         return (
           <div key={s} className="flex flex-1 items-start last:flex-none">
             <div className="flex flex-col items-center">

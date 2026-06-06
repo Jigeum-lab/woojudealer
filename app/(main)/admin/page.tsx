@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bar } from "react-chartjs-2";
 import {
@@ -13,13 +13,11 @@ import {
 import { Loader2, RefreshCw, Search } from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
-import {
-  getAllRequests,
-  getCompany,
-  setRequestStatus,
-} from "@/lib/store";
+import { fetchAllRequests, setRequestStatus } from "@/lib/db/requests";
+import { fetchCompanies } from "@/lib/db/companies";
 import {
   CollectionRequest,
+  Company,
   RequestStatus,
   STATUS_META,
   STATUS_ORDER,
@@ -49,18 +47,21 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminPage() {
   const { authorized } = useRequireAuth("admin");
   const [requests, setRequests] = useState<CollectionRequest[]>([]);
+  const [companiesMap, setCompaniesMap] = useState<Record<string, Company>>({});
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | RequestStatus>("all");
 
-  const reload = () => setRequests(getAllRequests());
+  const reload = useCallback(async () => {
+    const [reqs, cos] = await Promise.all([fetchAllRequests(), fetchCompanies()]);
+    setRequests(reqs);
+    setCompaniesMap(Object.fromEntries(cos.map((c) => [c.id, c])));
+    setReady(true);
+  }, []);
 
   useEffect(() => {
     reload();
-    setReady(true);
-    window.addEventListener("wj:change", reload);
-    return () => window.removeEventListener("wj:change", reload);
-  }, []);
+  }, [reload]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -87,7 +88,7 @@ export default function AdminPage() {
   );
 
   const filtered = requests.filter((r) => {
-    const company = getCompany(r.companyId);
+    const company = companiesMap[r.companyId];
     const matchQuery =
       !query ||
       company?.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -96,9 +97,14 @@ export default function AdminPage() {
     return matchQuery && matchStatus;
   });
 
-  function changeStatus(id: string, status: RequestStatus) {
-    setRequestStatus(id, status);
-    toast.success(`상태가 '${STATUS_META[status].label}'로 변경되었습니다`);
+  async function changeStatus(id: string, status: RequestStatus) {
+    try {
+      await setRequestStatus(id, status);
+      toast.success(`상태가 '${STATUS_META[status].label}'로 변경되었습니다`);
+      await reload();
+    } catch {
+      toast.error("상태 변경에 실패했습니다");
+    }
   }
 
   if (!authorized || !ready) {
@@ -212,7 +218,7 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {filtered.map((r) => {
-                  const company = getCompany(r.companyId);
+                  const company = companiesMap[r.companyId];
                   return (
                     <tr
                       key={r.id}

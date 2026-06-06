@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, ClipboardList, Loader2 } from "lucide-react";
 
 import { useAuth, useRequireAuth } from "@/lib/auth-context";
-import { createRequest } from "@/lib/store";
+import { createRequest } from "@/lib/db/requests";
+import { fetchCompanies } from "@/lib/db/companies";
 import {
   MANUFACTURERS,
   OS_OPTIONS,
@@ -82,15 +83,21 @@ export default function NewRequestPage() {
     setStep((s) => Math.min(3, s + 1));
   }
 
-  function submit() {
+  async function submit() {
     if (!step3Valid) {
       if (!pickupDate) toast.error("픽업 날짜를 선택해주세요");
       return;
     }
     setSubmitting(true);
-    setTimeout(() => {
-      const req = createRequest({
-        companyId: company!.id,
+    try {
+      // bizNo로 Supabase 실제 UUID 조회 (mock auth의 "c1" 대신)
+      const allCompanies = await fetchCompanies();
+      const dbCompany =
+        allCompanies.find((c) => company && c.bizNo === company.bizNo) ?? allCompanies[0];
+
+      const req = await createRequest({
+        companyId: dbCompany.id,
+        createdBy: null,
         items: { quantity: qtyNum, manufacturer, age, os, note: note || undefined },
         pickup: {
           date: pickupDate,
@@ -101,7 +108,11 @@ export default function NewRequestPage() {
       });
       toast.success("신청이 접수되었습니다");
       router.push(`/requests?focus=${req.id}`);
-    }, 700);
+    } catch {
+      toast.error("신청 접수에 실패했습니다");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

@@ -8,12 +8,9 @@ import { ArrowLeft, Download, Loader2, ShieldX } from "lucide-react";
 import Image from "next/image";
 
 import { useRequireAuth } from "@/lib/auth-context";
-import {
-  ensureCertificate,
-  getCompany,
-  getRequest,
-  statusReached,
-} from "@/lib/store";
+import { fetchRequest, statusReached } from "@/lib/db/requests";
+import { fetchCertificateByDisplayNo } from "@/lib/db/certificates";
+import { fetchCompany } from "@/lib/db/companies";
 import {
   Certificate,
   CollectionRequest,
@@ -41,23 +38,26 @@ export default function CertificatePage({
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const req = getRequest(id);
-    setRequest(req);
-    if (req && statusReached(req.status, "certified")) {
-      const c = ensureCertificate(id);
-      setCert(c);
-      setCompany(getCompany(req.companyId));
-      if (c) {
-        import("qrcode").then((QR) =>
-          QR.toDataURL(`https://woojudealer.com/verify/${c.certNo}`, {
-            width: 240,
-            margin: 1,
-            color: { dark: "#1e293b", light: "#ffffff" },
-          }).then(setQr)
-        );
+    async function load() {
+      const req = await fetchRequest(id);
+      setRequest(req);
+      if (req && statusReached(req.status, "certified")) {
+        const result = await fetchCertificateByDisplayNo(id);
+        if (result) {
+          setCert(result.cert);
+          setCompany(await fetchCompany(req.companyId));
+          import("qrcode").then((QR) =>
+            QR.toDataURL(`https://woojudealer.com/verify/${result.cert.certNo}`, {
+              width: 240,
+              margin: 1,
+              color: { dark: "#1e293b", light: "#ffffff" },
+            }).then(setQr)
+          );
+        }
       }
+      setReady(true);
     }
-    setReady(true);
+    load();
   }, [id]);
 
   async function downloadPdf() {

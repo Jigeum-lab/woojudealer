@@ -19,7 +19,7 @@ import {
 import { Cpu, Download, Leaf, Loader2, Coins, BarChart3 } from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
-import { getAllRequests, getRequestsByCompany } from "@/lib/store";
+import { fetchAllRequests } from "@/lib/db/requests";
 import {
   CARBON_PER_PC,
   CollectionRequest,
@@ -56,16 +56,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    const reload = () =>
-      setRequests(
-        user.role === "admin"
-          ? getAllRequests()
-          : getRequestsByCompany(user.companyId)
-      );
-    reload();
-    setReady(true);
-    window.addEventListener("wj:change", reload);
-    return () => window.removeEventListener("wj:change", reload);
+    async function load() {
+      const reqs = await fetchAllRequests();
+      setRequests(reqs);
+      setReady(true);
+    }
+    load();
   }, [user]);
 
   const processed = useMemo(

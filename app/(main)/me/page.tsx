@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2, Mail, ShieldCheck } from "lucide-react";
 
 import { useAuth, useRequireAuth } from "@/lib/auth-context";
+import { fetchCompanies, upsertCompany } from "@/lib/db/companies";
 import { Company, Provider } from "@/lib/types";
 import { formatBizNo, isValidBizNo } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export default function MyPage() {
     );
   }
 
-  function save() {
+  async function save() {
     if (!form) return;
     if (!isValidBizNo(form.bizNo)) {
       setBizError(true);
@@ -46,11 +47,17 @@ export default function MyPage() {
       return;
     }
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const allCompanies = await fetchCompanies();
+      const existing = allCompanies.find((c) => c.bizNo === form.bizNo);
+      await upsertCompany({ ...form, id: existing?.id ?? form.id });
       updateCompany(form);
-      setSaving(false);
       toast.success("회사 정보가 저장되었습니다");
-    }, 500);
+    } catch {
+      toast.error("저장에 실패했습니다. 다시 시도해주세요");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const dirty =

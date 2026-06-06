@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { RotateCcw } from "lucide-react";
 
-import { resetDemo } from "@/lib/store";
+import { createClient } from "@/lib/supabase/client";
 import { ISSUER } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,13 +21,20 @@ export function SiteFooter() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  function handleReset() {
+  async function handleReset() {
     setBusy(true);
-    resetDemo();
-    toast.success("데모 데이터를 초기화했습니다");
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 700);
+    try {
+      const supabase = createClient();
+      await supabase.from("requests").delete().gte("created_at", "1970-01-01");
+      await supabase.from("certificates").delete().gte("created_at", "1970-01-01");
+      toast.success("데모 데이터를 초기화했습니다");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 700);
+    } catch {
+      toast.error("초기화에 실패했습니다. 다시 시도해주세요");
+      setBusy(false);
+    }
   }
 
   return (
