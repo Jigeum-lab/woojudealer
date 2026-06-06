@@ -93,7 +93,7 @@ function LoginInner() {
     setLoading(provider);
     setTimeout(() => {
       login(provider);
-      toast.success("데모 로그인되었습니다");
+      toast.success("로그인되었습니다");
       router.push(returnTo);
       setLoading(null);
     }, 600);
@@ -207,24 +207,20 @@ function LoginInner() {
           <TabsContent value="social">
             <div className="mb-4 flex flex-col gap-2.5">
               {SOCIALS.map((s) => (
-                <div key={s.provider} className="relative">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => handleSocialDemo(s.provider)}
-                    className={`flex h-[52px] w-full items-center justify-center gap-3 rounded-xl text-[15px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${s.className}`}
-                  >
-                    {loading === s.provider ? (
-                      <Loader2 className="size-5 animate-spin" />
-                    ) : (
-                      s.icon
-                    )}
-                    {s.label}
-                  </button>
-                  <span className="absolute -right-1 -top-1 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-900">
-                    설정 필요
-                  </span>
-                </div>
+                <button
+                  key={s.provider}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleSocialDemo(s.provider)}
+                  className={`flex h-[52px] w-full items-center justify-center gap-3 rounded-xl text-[15px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${s.className}`}
+                >
+                  {loading === s.provider ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    s.icon
+                  )}
+                  {s.label}
+                </button>
               ))}
             </div>
 
@@ -260,11 +256,6 @@ function LoginInner() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-xs text-text-muted">
-        이메일 로그인은 Supabase Auth를 사용합니다.
-        <br />
-        소셜 로그인은 OAuth 설정 후 활성화됩니다.
-      </p>
     </main>
   );
 }
