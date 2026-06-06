@@ -17,6 +17,7 @@ const PROVIDER_LABEL: Record<Provider, string> = {
   kakao: "카카오",
   naver: "네이버",
   admin: "운영자 계정",
+  email: "이메일",
 };
 
 export default function MyPage() {

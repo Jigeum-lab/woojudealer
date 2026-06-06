@@ -8,6 +8,8 @@ import type {
   CollectionRequest,
   Company,
   RequestStatus,
+  Settlement,
+  SettlementStatus,
 } from "@/lib/types";
 
 export interface CompanyRow {
@@ -78,6 +80,31 @@ export function mapRequest(row: RequestRow): CollectionRequest {
       request: row.pickup_request ?? undefined,
     },
     status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+export interface SettlementRow {
+  id: string;
+  request_id: string;
+  company_id: string;
+  amount: number;
+  status: SettlementStatus;
+  note: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function mapSettlement(row: SettlementRow): Settlement {
+  return {
+    id: row.id,
+    requestId: row.request_id,
+    companyId: row.company_id,
+    amount: row.amount,
+    status: row.status,
+    note: row.note ?? undefined,
+    paidAt: row.paid_at ?? undefined,
     createdAt: row.created_at,
   };
 }

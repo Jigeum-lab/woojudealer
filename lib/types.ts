@@ -1,6 +1,6 @@
 export type Role = "company" | "admin";
 
-export type Provider = "google" | "kakao" | "naver" | "admin";
+export type Provider = "google" | "kakao" | "naver" | "admin" | "email";
 
 export type RequestStatus =
   | "requested"
@@ -78,6 +78,25 @@ export interface Certificate {
   dodMethod: string;
   issuedAt: string;
 }
+
+export type SettlementStatus = "pending" | "processing" | "paid";
+
+export interface Settlement {
+  id: string;
+  requestId: string;
+  companyId: string;
+  amount: number;
+  status: SettlementStatus;
+  note?: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export const SETTLEMENT_META: Record<SettlementStatus, { label: string; color: string }> = {
+  pending:    { label: "정산 대기",    color: "text-yellow-400" },
+  processing: { label: "정산 처리 중", color: "text-blue-400" },
+  paid:       { label: "정산 완료",    color: "text-primary" },
+};
 
 export const MANUFACTURERS = ["Dell", "HP", "Lenovo", "삼성", "기타"] as const;
 export const PC_AGES = ["~3년", "3~5년", "5년 이상"] as const;

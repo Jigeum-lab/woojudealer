@@ -13,6 +13,7 @@ import {
   Plus,
   ShieldCheck,
   User,
+  Wallet,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -37,6 +38,7 @@ const COMPANY_NAV = [
   { href: "/requests/new", label: "수거 신청", icon: Plus },
   { href: "/requests", label: "내 신청", icon: ClipboardList },
   { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
+  { href: "/settlements", label: "정산 내역", icon: Wallet },
 ];
 
 const PUBLIC_NAV = [
@@ -46,7 +48,10 @@ const PUBLIC_NAV = [
   { href: "/support", label: "FAQ", icon: HelpCircle },
 ];
 
-const ADMIN_NAV = [{ href: "/admin", label: "관리자", icon: ShieldCheck }];
+const ADMIN_NAV = [
+  { href: "/admin", label: "관리자", icon: ShieldCheck },
+  { href: "/settlements", label: "정산 관리", icon: Wallet },
+];
 
 export function SiteHeader() {
   const { user, logout } = useAuth();
