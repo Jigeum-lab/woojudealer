@@ -5,6 +5,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Loader2, ShieldX } from "lucide-react";
 
+import Image from "next/image";
+
 import { useRequireAuth } from "@/lib/auth-context";
 import {
   ensureCertificate,
@@ -12,7 +14,13 @@ import {
   getRequest,
   statusReached,
 } from "@/lib/store";
-import { Certificate, CollectionRequest, Company, DOD_METHOD } from "@/lib/types";
+import {
+  Certificate,
+  CollectionRequest,
+  Company,
+  DOD_METHOD,
+  ISSUER,
+} from "@/lib/types";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
@@ -138,10 +146,13 @@ export default function CertificatePage({
             {/* Header */}
             <div className="text-center">
               <div className="mb-3 inline-flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-base font-extrabold text-white">
-                  W
-                </span>
-                <span className="text-xl font-bold text-primary">우주딜러</span>
+                <Image
+                  src="/wooju/logo.svg"
+                  alt="우주딜러"
+                  width={88}
+                  height={32}
+                  className="h-7 w-auto invert"
+                />
               </div>
               <h1 className="text-[34px] font-extrabold tracking-[-0.01em] text-foreground">
                 보안삭제 인증서
@@ -195,10 +206,16 @@ export default function CertificatePage({
                 <p className="mb-2 text-sm text-text-secondary">
                   {formatDate(cert.issuedAt)}
                 </p>
-                <div className="flex items-center justify-end gap-2">
-                  <span className="text-lg font-bold text-foreground">
-                    우주딜러 (주식회사 우주시스템)
-                  </span>
+                <div className="mb-1.5 text-lg font-bold text-foreground">
+                  {ISSUER.brand} ({ISSUER.name})
+                </div>
+                <div className="text-[11px] leading-relaxed text-text-muted">
+                  대표 {ISSUER.ceo} · 사업자등록번호 {ISSUER.bizNo}
+                  <br />
+                  {ISSUER.address}
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <span className="text-xs text-text-muted">대표이사 {ISSUER.ceo}</span>
                   <span className="flex size-12 items-center justify-center rounded-full border-2 border-destructive/70 text-[11px] font-bold text-destructive/70">
                     직인
                   </span>

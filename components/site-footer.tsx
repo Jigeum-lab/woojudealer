@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { RotateCcw } from "lucide-react";
 
 import { resetDemo } from "@/lib/store";
+import { ISSUER } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,11 +35,13 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-6 px-10">
         <div className="text-[13px]">
           <div className="mb-1.5 font-bold text-foreground">
-            우주딜러 (주식회사 우주시스템)
+            {ISSUER.brand} ({ISSUER.name})
           </div>
-          <div>
-            사업자번호: 123-45-67890 &nbsp;|&nbsp; 대표: 우정현 &nbsp;|&nbsp;
-            contact@woojudealer.com
+          <div className="leading-relaxed">
+            대표 {ISSUER.ceo} &nbsp;|&nbsp; 사업자등록번호 {ISSUER.bizNo} &nbsp;|&nbsp;{" "}
+            {ISSUER.email}
+            <br />
+            {ISSUER.address}
           </div>
         </div>
         <div className="flex items-center gap-5 text-[13px]">

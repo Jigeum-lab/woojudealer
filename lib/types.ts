@@ -87,3 +87,16 @@ export const TIME_SLOTS = ["오전 (09:00~12:00)", "오후 (13:00~17:00)"] as co
 export const CARBON_PER_PC = 25; // kgCO2
 export const VALUE_PER_PC = 200_000; // 원
 export const DOD_METHOD = "DoD 5220.22-M";
+
+/** 우주딜러 운영사 (인증서 발급 주체) — 사업자등록증 기준 */
+export const ISSUER = {
+  name: "주식회사 우주시스템",
+  brand: "우주딜러",
+  bizNo: "212-86-16434",
+  corpNo: "230111-0398593",
+  ceo: "우정현",
+  founded: "2023.09.21",
+  address: "울산광역시 울주군 웅촌면 곡천동문길 32, 4-10호",
+  email: "153net@daum.net",
+  taxOffice: "울산세무서장",
+} as const;
