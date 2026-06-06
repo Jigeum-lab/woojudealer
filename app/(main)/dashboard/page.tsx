@@ -116,7 +116,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="border-b border-border bg-card py-5">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 sm:px-6 md:px-10">
           <div>
             <h1 className="text-[22px] font-bold text-foreground">ESG 대시보드</h1>
             <p className="mt-0.5 text-sm text-text-secondary">
@@ -176,7 +176,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-[1.6fr_1fr] gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr]">
               <div className="rounded-xl border border-border bg-card p-6">
                 <h2 className="mb-4 text-base font-bold text-foreground">
                   월별 처리 트렌드

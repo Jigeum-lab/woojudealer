@@ -146,7 +146,7 @@ export default function LandingPage() {
           </p>
 
           <div className="mb-14 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild variant="cta" size="xl">
+            <Button asChild variant="cta" size="lg">
               <Link href={requestHref}>
                 무료 수거 신청 <ArrowRight className="size-5" />
               </Link>
@@ -287,7 +287,7 @@ export default function LandingPage() {
             견적 문의부터 인증서 발급까지, 모든 것이 무료입니다
           </p>
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild variant="cta" size="xl">
+            <Button asChild variant="cta" size="lg">
               <Link href={requestHref}>지금 무료로 견적 받기</Link>
             </Button>
             <Button asChild variant="outline" size="lg">

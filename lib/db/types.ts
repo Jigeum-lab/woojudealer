@@ -116,5 +116,6 @@ export function mapCertificate(row: CertificateRow): Certificate {
     certNo: row.cert_no,
     dodMethod: row.dod_method,
     issuedAt: row.issued_at,
+    qrToken: row.qr_token,
   };
 }

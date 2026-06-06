@@ -118,7 +118,7 @@ export default function AdminPage() {
   return (
     <>
       <div className="border-b border-border bg-card py-5">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 sm:px-6 md:px-10">
           <h1 className="text-[22px] font-bold text-foreground">관리자 대시보드</h1>
           <Button variant="outline" onClick={reload}>
             <RefreshCw className="size-4" /> 새로고침

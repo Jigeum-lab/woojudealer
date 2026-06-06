@@ -66,7 +66,7 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[860px] flex-1 px-10 py-8">
+      <div className="mx-auto w-full max-w-[860px] flex-1 px-4 sm:px-6 md:px-10 py-8">
         <Tabs value={tab} onValueChange={onTabChange}>
           <TabsList>
             <TabsTrigger value="faq">자주 묻는 질문</TabsTrigger>

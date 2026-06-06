@@ -77,6 +77,7 @@ export interface Certificate {
   certNo: string;
   dodMethod: string;
   issuedAt: string;
+  qrToken: string;
 }
 
 export type SettlementStatus = "pending" | "processing" | "paid";

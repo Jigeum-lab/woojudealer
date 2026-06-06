@@ -285,6 +285,7 @@ export function ensureCertificate(requestId: string): Certificate | null {
     certNo: `CERT-2026-${String(seq).padStart(5, "0")}`,
     dodMethod: DOD_METHOD,
     issuedAt: new Date().toISOString(),
+    qrToken: `mock-${requestId}`,
   };
   list.push(cert);
   write(KEY.certificates, list);

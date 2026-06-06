@@ -47,7 +47,7 @@ export default function CertificatePage({
           setCert(result.cert);
           setCompany(await fetchCompany(req.companyId));
           import("qrcode").then((QR) =>
-            QR.toDataURL(`https://woojudealer.com/verify/${result.cert.certNo}`, {
+            QR.toDataURL(`https://woojudealer.com/c/${result.cert.qrToken}`, {
               width: 240,
               margin: 1,
               color: { dark: "#1e293b", light: "#ffffff" },
@@ -114,7 +114,7 @@ export default function CertificatePage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
       <div className="mb-6 flex items-center justify-between">
         <Button asChild variant="ghost" size="sm">
           <Link href="/requests">

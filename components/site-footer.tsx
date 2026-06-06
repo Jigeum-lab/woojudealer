@@ -39,7 +39,7 @@ export function SiteFooter() {
 
   return (
     <footer className="mt-auto border-t border-border bg-card py-8 text-text-muted">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-6 px-10">
+      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-6 px-4 sm:px-6 md:px-10">
         <div className="text-[13px]">
           <div className="mb-1.5 font-bold text-foreground">
             {ISSUER.brand} ({ISSUER.name})

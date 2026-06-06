@@ -72,7 +72,7 @@ function RequestsInner() {
   return (
     <>
       <div className="border-b border-border bg-card py-5">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 sm:px-6 md:px-10">
           <h1 className="text-[22px] font-bold text-foreground">
             {user.role === "admin" ? "전체 신청 현황" : "내 신청"}
           </h1>

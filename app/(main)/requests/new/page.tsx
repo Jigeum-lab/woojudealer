@@ -118,12 +118,12 @@ export default function NewRequestPage() {
   return (
     <>
       <div className="border-b border-border bg-card py-5">
-        <div className="mx-auto max-w-[1280px] px-10">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 md:px-10">
           <h1 className="text-[22px] font-bold text-foreground">수거 신청</h1>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
+      <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
         {/* Stepper */}
         <div className="mb-8 flex overflow-hidden rounded-xl border border-border bg-card">
           {STEPS.map((s) => {
@@ -167,7 +167,7 @@ export default function NewRequestPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-[1fr_360px] items-start gap-8">
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_360px]">
           {/* Form */}
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="border-b border-border bg-brand-green-soft px-7 py-5">
