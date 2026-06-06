@@ -134,7 +134,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
+      <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
         {processed.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong bg-card py-20 text-center">
             <BarChart3 className="mb-4 size-12 text-border-strong" />
@@ -151,7 +151,7 @@ export default function DashboardPage() {
         ) : (
           <div ref={reportRef} className="flex flex-col gap-6">
             {/* KPI */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <KpiCard
                 icon={Cpu}
                 iconClass="bg-brand-green-soft text-primary"

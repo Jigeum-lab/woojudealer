@@ -84,7 +84,7 @@ function RequestsInner() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
+      <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
         <Tabs
           value={filter}
           onValueChange={(v) => setFilter(v as Filter)}

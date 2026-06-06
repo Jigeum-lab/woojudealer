@@ -126,9 +126,9 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1280px] px-10 py-8">
+      <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
         {/* Summary */}
-        <div className="mb-6 grid grid-cols-4 gap-4">
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <SummaryCard label="전체 신청" value={stats.total} />
           <SummaryCard label="진행 중" value={stats.active} accent="text-info" />
           <SummaryCard label="처리 완료" value={stats.done} accent="text-success" />

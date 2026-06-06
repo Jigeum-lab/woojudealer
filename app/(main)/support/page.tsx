@@ -58,7 +58,7 @@ export default function SupportPage() {
   return (
     <>
       <div className="border-b border-border bg-card py-5">
-        <div className="mx-auto max-w-[860px] px-10">
+        <div className="mx-auto max-w-[860px] px-4 sm:px-6 md:px-10">
           <h1 className="text-[22px] font-bold text-foreground">고객 지원</h1>
           <p className="mt-0.5 text-sm text-text-secondary">
             자주 묻는 질문과 이용 약관을 확인하세요

@@ -64,7 +64,7 @@ export default function MyPage() {
     !!form && !!company && JSON.stringify(form) !== JSON.stringify(company);
 
   return (
-    <div className="mx-auto w-full max-w-[760px] px-10 py-10">
+    <div className="mx-auto w-full max-w-[760px] px-4 sm:px-6 md:px-10 py-10">
       <h1 className="mb-6 text-[22px] font-bold text-foreground">마이페이지</h1>
 
       {/* Account card */}
