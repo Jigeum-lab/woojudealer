@@ -69,17 +69,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     async function init() {
-      setIsLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadFromSupabase(session.user.id);
-      } else {
-        store.seedIfNeeded();
+      store.seedIfNeeded();
+      const storeUser = store.getSessionUser();
+
+      if (storeUser) {
+        // Mock session exists — show immediately, verify Supabase in background
         syncFromStore();
+        setIsLoading(false);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await loadFromSupabase(session.user.id);
+        }
+      } else {
+        // No mock session — must wait for Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await loadFromSupabase(session.user.id);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
     init();
