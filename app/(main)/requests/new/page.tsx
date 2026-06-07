@@ -37,7 +37,7 @@ const STEPS = [
 ];
 
 export default function NewRequestPage() {
-  const { authorized } = useRequireAuth();
+  const { authorized, isLoading } = useRequireAuth();
   const { company } = useAuth();
   const router = useRouter();
 
@@ -66,10 +66,22 @@ export default function NewRequestPage() {
 
   const progress = useMemo(() => Math.round((step / 3) * 100), [step]);
 
-  if (!authorized || !company) {
+  if (isLoading || !authorized) {
     return (
       <div className="flex flex-1 items-center justify-center py-32 text-text-muted">
         <Loader2 className="mr-2 size-5 animate-spin" /> 불러오는 중…
+      </div>
+    );
+  }
+
+  if (!company) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-32 text-center">
+        <p className="text-base font-semibold text-foreground">회사 정보를 먼저 등록해주세요</p>
+        <p className="text-sm text-text-secondary">수거 신청을 하려면 마이페이지에서 회사 정보를 입력해야 합니다.</p>
+        <Button asChild variant="cta">
+          <Link href="/me">마이페이지에서 등록</Link>
+        </Button>
       </div>
     );
   }
