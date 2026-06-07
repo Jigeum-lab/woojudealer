@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, Check, ClipboardList, Loader2 } from "lucide-rea
 
 import { useAuth, useRequireAuth } from "@/lib/auth-context";
 import { createRequest } from "@/lib/db/requests";
-import { fetchCompanies } from "@/lib/db/companies";
+import { fetchCompanies, upsertCompany } from "@/lib/db/companies";
 import {
   MANUFACTURERS,
   OS_OPTIONS,
@@ -102,10 +102,18 @@ export default function NewRequestPage() {
     }
     setSubmitting(true);
     try {
-      // bizNo로 Supabase 실제 UUID 조회 (mock auth의 "c1" 대신)
       const allCompanies = await fetchCompanies();
-      const dbCompany =
-        allCompanies.find((c) => company && c.bizNo === company.bizNo) ?? allCompanies[0];
+      let dbCompany = allCompanies.find((c) => company && c.bizNo === company.bizNo);
+      if (!dbCompany && company) {
+        dbCompany = await upsertCompany({
+          name: company.name,
+          bizNo: company.bizNo,
+          contact: company.contact,
+          phone: company.phone,
+          address: company.address,
+        });
+      }
+      if (!dbCompany) throw new Error("no company");
 
       const req = await createRequest({
         companyId: dbCompany.id,
