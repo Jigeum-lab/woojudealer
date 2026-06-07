@@ -26,11 +26,16 @@ export default function SettlementsPage() {
 
   async function load() {
     if (!user) return;
-    const data = isAdmin
-      ? await fetchAllSettlements()
-      : await fetchSettlementsByCompany(company?.id ?? null);
-    setSettlements(data);
-    setReady(true);
+    try {
+      const data = isAdmin
+        ? await fetchAllSettlements()
+        : await fetchSettlementsByCompany(company?.id ?? null);
+      setSettlements(data);
+    } catch {
+      // DB 오류 시에도 ready 처리
+    } finally {
+      setReady(true);
+    }
   }
 
   useEffect(() => {

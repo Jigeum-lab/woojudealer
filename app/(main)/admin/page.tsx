@@ -53,10 +53,15 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | RequestStatus>("all");
 
   const reload = useCallback(async () => {
-    const [reqs, cos] = await Promise.all([fetchAllRequests(), fetchCompanies()]);
-    setRequests(reqs);
-    setCompaniesMap(Object.fromEntries(cos.map((c) => [c.id, c])));
-    setReady(true);
+    try {
+      const [reqs, cos] = await Promise.all([fetchAllRequests(), fetchCompanies()]);
+      setRequests(reqs);
+      setCompaniesMap(Object.fromEntries(cos.map((c) => [c.id, c])));
+    } catch {
+      // DB 오류 시에도 ready 처리
+    } finally {
+      setReady(true);
+    }
   }, []);
 
   useEffect(() => {

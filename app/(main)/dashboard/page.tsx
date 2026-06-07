@@ -57,9 +57,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     async function load() {
-      const reqs = await fetchAllRequests();
-      setRequests(reqs);
-      setReady(true);
+      try {
+        const reqs = await fetchAllRequests();
+        setRequests(reqs);
+      } catch {
+        // DB 오류 시에도 ready 처리
+      } finally {
+        setReady(true);
+      }
     }
     load();
   }, [user]);
