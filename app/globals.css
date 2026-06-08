@@ -54,7 +54,7 @@
   font-family: "SDSwagger";
   src: url("/wooju/fonts/SDSwaggerTTF.ttf") format("truetype");
   font-weight: 400 900;
-  font-display: swap;
+  font-display: block;
 }
 
 @theme inline {

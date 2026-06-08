@@ -39,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${noto.variable} antialiased dark`}>
       <head>
+        <link rel="preload" href="/wooju/fonts/SDSwaggerTTF.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
           rel="stylesheet"
