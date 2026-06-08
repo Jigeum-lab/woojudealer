@@ -129,7 +129,7 @@ export default function NewRequestPage() {
       toast.success("신청이 접수되었습니다");
       router.push(`/requests?focus=${req.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = err instanceof Error ? err.message : (err as {message?: string})?.message ?? JSON.stringify(err);
       toast.error(`신청 접수에 실패했습니다: ${msg}`);
     } finally {
       setSubmitting(false);
