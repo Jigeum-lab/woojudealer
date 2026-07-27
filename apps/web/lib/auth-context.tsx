@@ -9,26 +9,28 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Company, Provider, Role, User } from "./types";
+import type { Company, Role, User } from "./types";
 import { fetchProfile } from "./db/profiles";
 import { fetchCompany } from "./db/companies";
 import { createClient } from "./supabase/client";
-import * as store from "./store";
+
+/** Supabase가 네이티브로 지원하는 소셜 provider (naver는 커스텀 OIDC 필요 — 추후) */
+export type OAuthProvider = "google" | "kakao";
 
 interface AuthState {
   user: User | null;
   company: Company | null;
   isLoading: boolean;
-  /** 실제 Supabase 이메일/PW 로그인 */
+  /** 이메일/비밀번호 로그인 */
   signIn: (email: string, password: string) => Promise<void>;
-  /** 실제 Supabase 회원가입 */
+  /** 이메일/비밀번호 회원가입 */
   signUp: (email: string, password: string, name: string) => Promise<void>;
-  /** 데모용 소셜 mock 로그인 */
-  login: (provider: Provider) => User;
-  /** 데모용 관리자 mock 로그인 */
-  loginAsAdmin: () => User;
-  logout: () => void;
-  refresh: () => void;
+  /** 소셜 로그인 (OAuth 리다이렉트) */
+  signInWithProvider: (provider: OAuthProvider, next?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  /** 세션에서 프로필·회사 정보를 다시 불러온다 */
+  refresh: () => Promise<void>;
+  /** 로컬 회사 상태만 갱신 (DB 저장은 호출측에서 수행) */
   updateCompany: (company: Company) => void;
 }
 
@@ -39,55 +41,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const syncFromStore = useCallback(() => {
-    const u = store.getSessionUser();
-    setUser(u);
-    setCompany(u ? store.getCompany(u.companyId) : null);
-  }, []);
-
-  const loadFromSupabase = useCallback(
-    async (userId: string): Promise<boolean> => {
-      try {
-        const profile = await fetchProfile(userId);
-        if (!profile) return false;
-        setUser(profile);
-        if (profile.companyId) {
-          const comp = await fetchCompany(profile.companyId);
-          setCompany(comp);
-        } else {
-          setCompany(null);
-        }
-        return true;
-      } catch {
-        return false;
+  const loadFromSupabase = useCallback(async (userId: string) => {
+    try {
+      const profile = await fetchProfile(userId);
+      if (!profile) {
+        setUser(null);
+        setCompany(null);
+        return;
       }
-    },
-    []
-  );
+      setUser(profile);
+      setCompany(profile.companyId ? await fetchCompany(profile.companyId) : null);
+    } catch {
+      setUser(null);
+      setCompany(null);
+    }
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
+    let active = true;
 
     async function init() {
-      store.seedIfNeeded();
-      const storeUser = store.getSessionUser();
-
-      if (storeUser) {
-        // Mock session exists — show immediately, verify Supabase in background
-        syncFromStore();
-        setIsLoading(false);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadFromSupabase(session.user.id);
-        }
-      } else {
-        // No mock session — must wait for Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadFromSupabase(session.user.id);
-        }
-        setIsLoading(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (active && session?.user) {
+        await loadFromSupabase(session.user.id);
       }
+      if (active) setIsLoading(false);
     }
 
     init();
@@ -98,27 +79,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === "SIGNED_IN" && session?.user) {
         await loadFromSupabase(session.user.id);
       } else if (event === "SIGNED_OUT") {
-        syncFromStore();
+        setUser(null);
+        setCompany(null);
       }
     });
 
-    const handler = () => syncFromStore();
-    window.addEventListener("wj:change", handler);
-    window.addEventListener("storage", handler);
-
     return () => {
+      active = false;
       subscription.unsubscribe();
-      window.removeEventListener("wj:change", handler);
-      window.removeEventListener("storage", handler);
     };
-  }, [loadFromSupabase, syncFromStore]);
+  }, [loadFromSupabase]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }, []);
 
@@ -135,53 +109,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const login = useCallback(
-    (provider: Provider) => {
-      const demo = store.getUsers().find((u) => u.id === "u_demo") ?? null;
-      const updated: User = demo ?? {
-        id: "u_demo",
-        email: "demo@example.com",
-        name: "홍길동",
+  const signInWithProvider = useCallback(
+    async (provider: OAuthProvider, next = "/requests") => {
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        companyId: "c1",
-        role: "company",
-        termsAgreed: true,
-      };
-      updated.provider = provider;
-      store.upsertUser(updated);
-      store.setSession(updated.id);
-      syncFromStore();
-      return updated;
+        options: { redirectTo },
+      });
+      if (error) throw error;
     },
-    [syncFromStore]
+    []
   );
 
-  const loginAsAdmin = useCallback(() => {
-    const admin = store.getUsers().find((u) => u.id === "u_admin")!;
-    store.setSession(admin.id);
-    syncFromStore();
-    return admin;
-  }, [syncFromStore]);
-
-  const logout = useCallback(() => {
-    const supabase = createClient();
-    supabase.auth.signOut().catch(() => {});
-    store.setSession(null);
+  const logout = useCallback(async () => {
     setUser(null);
     setCompany(null);
+    const supabase = createClient();
+    await supabase.auth.signOut().catch(() => {});
   }, []);
 
-  const refresh = useCallback(() => {
-    syncFromStore();
-  }, [syncFromStore]);
+  const refresh = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user) {
+      await loadFromSupabase(session.user.id);
+    } else {
+      setUser(null);
+      setCompany(null);
+    }
+  }, [loadFromSupabase]);
 
-  const updateCompany = useCallback(
-    (c: Company) => {
-      store.upsertCompany(c);
-      syncFromStore();
-    },
-    [syncFromStore]
-  );
+  const updateCompany = useCallback((c: Company) => setCompany(c), []);
 
   return (
     <AuthContext.Provider
@@ -191,8 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         signIn,
         signUp,
-        login,
-        loginAsAdmin,
+        signInWithProvider,
         logout,
         refresh,
         updateCompany,
@@ -226,7 +186,6 @@ export function useRequireAuth(requiredRole?: Role) {
   return {
     user,
     isLoading,
-    authorized:
-      !!user && (!requiredRole || user.role === requiredRole),
+    authorized: !!user && (!requiredRole || user.role === requiredRole),
   };
 }

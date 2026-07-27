@@ -126,12 +126,12 @@ function SignupInner() {
             />
           </div>
 
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-secondary p-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border-2 border-border-strong bg-secondary p-3.5 transition-colors has-[button[data-state=checked]]:border-primary has-[button[data-state=checked]]:bg-brand-green-soft">
             <Checkbox
               checked={agreed}
               onCheckedChange={(v) => setAgreed(v === true)}
               disabled={loading}
-              className="mt-0.5"
+              className="mt-0.5 size-5 border-2 border-text-secondary data-[state=checked]:border-primary"
             />
             <span className="text-[13px] leading-relaxed text-text-secondary">
               <Link href="/support#terms" className="font-semibold text-primary hover:underline">
@@ -141,7 +141,7 @@ function SignupInner() {
               <Link href="/support#privacy" className="font-semibold text-primary hover:underline">
                 개인정보처리방침
               </Link>
-              에 동의합니다 (필수)
+              에 동의합니다 <span className="font-semibold text-foreground">(필수)</span>
             </span>
           </label>
 

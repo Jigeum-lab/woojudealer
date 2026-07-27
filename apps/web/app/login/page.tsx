@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 import type { Provider } from "@/lib/types";
@@ -54,8 +54,35 @@ const SOCIALS: { provider: Provider; label: string; className: string; icon: Rea
   },
 ];
 
+/** 약관 동의 체크박스 — 눈에 잘 띄도록 강조 (테두리·크기 up) */
+function ConsentCheckbox({
+  agreed,
+  onChange,
+  disabled,
+}: {
+  agreed: boolean;
+  onChange: (v: boolean) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border-2 border-border-strong bg-secondary p-3.5 transition-colors has-[button[data-state=checked]]:border-primary has-[button[data-state=checked]]:bg-brand-green-soft">
+      <Checkbox
+        checked={agreed}
+        onCheckedChange={(v) => onChange(v === true)}
+        disabled={disabled}
+        className="mt-0.5 size-5 border-2 border-text-secondary data-[state=checked]:border-primary"
+      />
+      <span className="text-[13px] leading-relaxed text-text-secondary">
+        <Link href="/support#terms" className="font-semibold text-primary hover:underline">이용약관</Link>{" "}
+        및{" "}
+        <Link href="/support#privacy" className="font-semibold text-primary hover:underline">개인정보처리방침</Link>에 동의합니다 <span className="font-semibold text-foreground">(필수)</span>
+      </span>
+    </label>
+  );
+}
+
 function LoginInner() {
-  const { signIn, login, loginAsAdmin } = useAuth();
+  const { signIn, signInWithProvider } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const returnTo = params.get("return_to") || "/requests";
@@ -83,30 +110,26 @@ function LoginInner() {
           ? "이메일 또는 비밀번호가 올바르지 않습니다"
           : msg
       );
-    } finally {
       setLoading(null);
     }
   }
 
-  function handleSocialDemo(provider: Provider) {
+  async function handleSocial(provider: Provider) {
     if (!agreed) { toast.error("이용약관에 동의해주세요"); return; }
+    if (provider === "naver") {
+      toast.info("네이버 로그인은 준비 중입니다. Google 또는 카카오를 이용해주세요.");
+      return;
+    }
+    if (provider !== "google" && provider !== "kakao") return;
     setLoading(provider);
-    setTimeout(() => {
-      login(provider);
-      toast.success("로그인되었습니다");
-      router.push(returnTo);
+    try {
+      // OAuth 리다이렉트 — 성공 시 이 페이지를 떠난다
+      await signInWithProvider(provider, returnTo);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "소셜 로그인 실패";
+      toast.error(msg);
       setLoading(null);
-    }, 600);
-  }
-
-  function handleAdmin() {
-    setLoading("admin");
-    setTimeout(() => {
-      loginAsAdmin();
-      toast.success("운영자로 로그인했습니다");
-      router.push("/admin");
-      setLoading(null);
-    }, 600);
+    }
   }
 
   return (
@@ -172,19 +195,7 @@ function LoginInner() {
                 </div>
               </div>
 
-              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-secondary p-3">
-                <Checkbox
-                  checked={agreed}
-                  onCheckedChange={(v) => setAgreed(v === true)}
-                  disabled={busy}
-                  className="mt-0.5"
-                />
-                <span className="text-[13px] leading-relaxed text-text-secondary">
-                  <Link href="/support#terms" className="font-semibold text-primary hover:underline">이용약관</Link>{" "}
-                  및{" "}
-                  <Link href="/support#privacy" className="font-semibold text-primary hover:underline">개인정보처리방침</Link>에 동의합니다
-                </span>
-              </label>
+              <ConsentCheckbox agreed={agreed} onChange={setAgreed} disabled={busy} />
 
               <Button variant="cta" size="lg" type="submit" disabled={busy} className="w-full">
                 {loading === "email" && <Loader2 className="size-4 animate-spin" />}
@@ -211,7 +222,7 @@ function LoginInner() {
                   key={s.provider}
                   type="button"
                   disabled={busy}
-                  onClick={() => handleSocialDemo(s.provider)}
+                  onClick={() => handleSocial(s.provider)}
                   className={`flex h-[52px] w-full items-center justify-center gap-3 rounded-xl text-[15px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${s.className}`}
                 >
                   {loading === s.provider ? (
@@ -224,38 +235,10 @@ function LoginInner() {
               ))}
             </div>
 
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-secondary p-3">
-              <Checkbox
-                checked={agreed}
-                onCheckedChange={(v) => setAgreed(v === true)}
-                disabled={busy}
-                className="mt-0.5"
-              />
-              <span className="text-[13px] leading-relaxed text-text-secondary">
-                <Link href="/support#terms" className="font-semibold text-primary hover:underline">이용약관</Link>{" "}
-                및{" "}
-                <Link href="/support#privacy" className="font-semibold text-primary hover:underline">개인정보처리방침</Link>에 동의합니다
-              </span>
-            </label>
+            <ConsentCheckbox agreed={agreed} onChange={setAgreed} disabled={busy} />
           </TabsContent>
         </Tabs>
-
-        <div className="my-5 flex items-center gap-3 text-xs text-text-muted">
-          <span className="h-px flex-1 bg-border" />
-          데모
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={handleAdmin} disabled={busy}>
-          {loading === "admin" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ShieldCheck className="size-4" />
-          )}
-          운영자 데모 로그인
-        </Button>
       </div>
-
     </main>
   );
 }

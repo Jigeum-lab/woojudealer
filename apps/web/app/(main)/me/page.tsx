@@ -51,8 +51,9 @@ export default function MyPage() {
     try {
       const allCompanies = await fetchCompanies();
       const existing = allCompanies.find((c) => c.bizNo === form.bizNo);
-      await upsertCompany({ ...form, id: existing?.id ?? form.id });
-      updateCompany(form);
+      const saved = await upsertCompany({ ...form, id: existing?.id ?? form.id });
+      updateCompany(saved);
+      setForm({ ...saved });
       toast.success("회사 정보가 저장되었습니다");
     } catch {
       toast.error("저장에 실패했습니다. 다시 시도해주세요");
