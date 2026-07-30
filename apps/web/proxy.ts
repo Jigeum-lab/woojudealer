@@ -23,10 +23,10 @@ function isProtected(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  const { response, user } = await updateSession(request);
+  const { response, isAuthenticated } = await updateSession(request);
 
   const { pathname, search } = request.nextUrl;
-  if (!user && isProtected(pathname)) {
+  if (!isAuthenticated && isProtected(pathname)) {
     const login = new URL("/login", request.url);
     login.searchParams.set("return_to", pathname + search);
     return NextResponse.redirect(login);
