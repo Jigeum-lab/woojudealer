@@ -103,6 +103,9 @@
 
   --font-sans: var(--font-noto), "Pretendard Variable", Pretendard, system-ui, sans-serif;
   --font-display: "SDSwagger", var(--font-noto), "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  /* 부품번호·문서번호·스펙 표기용. 시스템 폰트라 내려받지 않는다 */
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
