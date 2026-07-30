@@ -21,7 +21,7 @@ export async function createClient() {
             );
           } catch {
             // Server Component context — cookies are read-only here.
-            // Middleware handles session refresh.
+            // Proxy(proxy.ts)가 세션 갱신을 담당한다.
           }
         },
       },
