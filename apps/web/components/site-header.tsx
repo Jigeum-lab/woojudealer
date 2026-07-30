@@ -100,6 +100,11 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
+              // 인증 상태가 세션→프로필→회사 3단계로 확정되며 헤더가 여러 번
+              // 재렌더되는데, 그때마다 링크 prefetch가 다시 발생해 로그인 직후
+              // RSC 요청이 30건 가까이 몰렸다. 모두 로그인이 필요한 화면이라
+              // proxy를 거치므로 비용이 크다. 실제 이동 시에만 받는다.
+              prefetch={false}
               className={cn(
                 "relative rounded-md px-3.5 py-2 text-sm font-medium transition-colors",
                 isActive(item.href)
@@ -196,6 +201,7 @@ export function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
