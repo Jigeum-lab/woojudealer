@@ -1,0 +1,22 @@
+# 개발용 이미지 (pnpm 워크스페이스 모노레포 · web + api 공용)
+# web·api가 이 이미지를 공유하고 compose에서 command로 분기한다.
+FROM node:24-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN corepack enable
+
+# 워크스페이스 매니페스트만 먼저 복사 → 의존성 레이어 캐시
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/
+COPY apps/api/package.json apps/api/
+
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+EXPOSE 3000 4000

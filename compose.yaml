@@ -1,0 +1,53 @@
+# 개발용 — web(Next) · api(NestJS) 두 서비스.
+# api의 main.ts가 `process.env.PORT ?? 3000`이라 web과 충돌한다.
+# 컨테이너 안에서 api는 4000으로 고정한다.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    command: pnpm --filter web exec next dev --hostname 0.0.0.0 --port 3000
+    # Next가 apps/web/.env.local을 자체 로드한다.
+    # 단 그 파일은 현재 빈 템플릿이라 Supabase 키를 채워야 web이 정상 동작한다.
+    ports:
+      - "${WEB_PORT:-3400}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/.next
+    environment:
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - NEXT_TELEMETRY_DISABLED=1
+      # next/font/google이 Noto Sans KR 서브셋 100여 개를 동시에 받는데,
+      # 컨테이너 DNS가 IPv6를 먼저 주면 상당수가 연결에 실패한다. IPv4 우선으로 고정.
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      # compose 네트워크 안에서는 서비스명으로 api에 접속한다
+      - NEXT_PUBLIC_API_URL=http://api:4000
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    command: pnpm --filter api dev
+    environment:
+      - PORT=4000
+    ports:
+      - "${API_PORT:-4100}:4000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/api/node_modules

@@ -38,3 +38,9 @@ yarn-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright MCP 세션 산출물 (스냅샷·콘솔로그)
+.playwright-mcp/
+
+# JetBrains IDE
+.idea/
