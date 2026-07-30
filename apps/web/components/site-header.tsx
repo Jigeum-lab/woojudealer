@@ -6,6 +6,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Boxes,
+  Calculator,
   ClipboardList,
   HelpCircle,
   LogOut,
@@ -37,6 +39,7 @@ import { cn } from "@/lib/utils";
 const COMPANY_NAV = [
   { href: "/requests/new", label: "수거 신청", icon: Plus },
   { href: "/requests", label: "내 신청", icon: ClipboardList },
+  { href: "/quotes", label: "견적", icon: Calculator },
   { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
   { href: "/settlements", label: "정산 내역", icon: Wallet },
 ];
@@ -50,6 +53,8 @@ const PUBLIC_NAV = [
 
 const ADMIN_NAV = [
   { href: "/admin", label: "관리자", icon: ShieldCheck },
+  { href: "/admin/parts", label: "부품·재고", icon: Boxes },
+  { href: "/quotes", label: "견적", icon: Calculator },
   { href: "/settlements", label: "정산 관리", icon: Wallet },
 ];
 

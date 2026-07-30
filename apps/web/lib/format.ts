@@ -18,10 +18,16 @@ export function formatNumber(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
+/** 대시보드용 축약 표기 (만원·억원 단위 반올림) */
 export function formatKRW(n: number): string {
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억원`;
   if (n >= 10_000) return `${formatNumber(Math.round(n / 10_000))}만원`;
   return `${formatNumber(n)}원`;
+}
+
+/** 견적서·거래명세서용 원 단위 정확 표기 — 반올림하지 않는다 */
+export function formatWon(n: number): string {
+  return `${formatNumber(Math.round(n))}원`;
 }
 
 export function formatWeight(kg: number): string {

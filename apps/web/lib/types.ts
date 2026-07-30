@@ -108,6 +108,135 @@ export const CARBON_PER_PC = 25; // kgCO2
 export const VALUE_PER_PC = 200_000; // 원
 export const DOD_METHOD = "DoD 5220.22-M";
 
+// =====================================================
+// 견적 시스템 (우주시스템 견적서 ver.8.0.2 엑셀 이식)
+// =====================================================
+
+export type PartCategory =
+  | "cpu"
+  | "mainboard"
+  | "memory"
+  | "ssd"
+  | "hdd"
+  | "gpu"
+  | "psu"
+  | "case"
+  | "cpu_cooler"
+  | "case_fan"
+  | "rgb_controller"
+  | "ssd_heatsink"
+  | "memory_heatsink"
+  | "tuning"
+  | "labor_as"
+  | "keyboard"
+  | "mouse"
+  | "speaker"
+  | "headset"
+  | "monitor"
+  | "extra";
+
+export type PartPlatform = "amd" | "intel" | "common";
+
+/**
+ * 견적서 구성 그룹.
+ * 엑셀 견적양식은 본체(CPU~튜닝) 소계를 낸 뒤, 공임·주변기기를 더해
+ * "추가품목까지 총 합계"를 따로 낸다. 그 2단 구조를 그대로 따른다.
+ */
+export type PartGroup = "core" | "service" | "peripheral";
+
+/** 슬롯 순서는 엑셀 출력폼(AMD출력폼 시트) 기준 — 인쇄물과 같은 순서 */
+export const CATEGORY_META: Record<
+  PartCategory,
+  { label: string; group: PartGroup; order: number }
+> = {
+  cpu:             { label: "CPU",        group: "core",       order: 1 },
+  cpu_cooler:      { label: "CPU쿨러",     group: "core",       order: 2 },
+  mainboard:       { label: "마더보드",     group: "core",       order: 3 },
+  memory:          { label: "메모리",      group: "core",       order: 4 },
+  ssd:             { label: "SSD",        group: "core",       order: 5 },
+  hdd:             { label: "HDD",        group: "core",       order: 6 },
+  gpu:             { label: "그래픽카드",   group: "core",       order: 7 },
+  psu:             { label: "파워",        group: "core",       order: 8 },
+  case:            { label: "케이스",      group: "core",       order: 9 },
+  case_fan:        { label: "케이스 팬",    group: "core",       order: 10 },
+  rgb_controller:  { label: "RGB 컨트롤",  group: "core",       order: 11 },
+  ssd_heatsink:    { label: "SSD 방열판",  group: "core",       order: 12 },
+  memory_heatsink: { label: "메모리 방열판", group: "core",      order: 13 },
+  tuning:          { label: "튜닝",        group: "core",       order: 14 },
+  labor_as:        { label: "공임 & AS",   group: "service",    order: 15 },
+  keyboard:        { label: "키보드",      group: "peripheral", order: 16 },
+  mouse:           { label: "마우스",      group: "peripheral", order: 17 },
+  speaker:         { label: "스피커",      group: "peripheral", order: 18 },
+  headset:         { label: "헤드셋",      group: "peripheral", order: 19 },
+  monitor:         { label: "모니터",      group: "peripheral", order: 20 },
+  extra:           { label: "추가품목",     group: "peripheral", order: 21 },
+};
+
+export const CATEGORY_ORDER: PartCategory[] = (
+  Object.keys(CATEGORY_META) as PartCategory[]
+).sort((a, b) => CATEGORY_META[a].order - CATEGORY_META[b].order);
+
+/** CPU·마더보드만 AMD/INTEL을 타고 나머지는 공용 */
+export const PLATFORM_BOUND: PartCategory[] = ["cpu", "mainboard"];
+
+export interface Part {
+  id: string;
+  partNo: number | null;
+  category: PartCategory;
+  platform: PartPlatform;
+  name: string;
+  price: number;
+  soldOut: boolean;
+  grade: string | null;
+  link: string | null;
+  /** 카테고리마다 키가 다르다 — compatibility.ts가 해석한다 */
+  specs: Record<string, string | number | null>;
+  /** 재고 수량. inventory 조인 결과가 없으면 null (재고 미등록) */
+  stock: number | null;
+}
+
+export interface QuoteItem {
+  id: string;
+  category: PartCategory;
+  partId: string | null;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export type QuoteStatus = "draft" | "sent" | "ordered" | "canceled";
+
+export interface Quote {
+  id: string;
+  displayNo: string;
+  platform: PartPlatform;
+  customerName: string;
+  companyId: string | null;
+  quoteDate: string;
+  vatIncluded: boolean;
+  total: number;
+  status: QuoteStatus;
+  note: string | null;
+  items: QuoteItem[];
+  createdAt: string;
+}
+
+export const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; color: string }> = {
+  draft:    { label: "작성 중",   color: "text-text-muted" },
+  sent:     { label: "발송 완료", color: "text-blue-400" },
+  ordered:  { label: "주문 확정", color: "text-primary" },
+  canceled: { label: "취소",     color: "text-red-400" },
+};
+
+/** 견적 유효기간·납기 등 엑셀 출력폼의 고정 문구 */
+export const QUOTE_TERMS = {
+  validity: "발행일로부터 1일간",
+  delivery: "결제후 72시간(토/일요일, 공휴일 제외)",
+  warranty: "제품 납기 후 1년 무상보증(일부품목 제외)",
+} as const;
+
+export const VAT_RATE = 0.1;
+
 /** 우주딜러 운영사 (인증서 발급 주체) — 사업자등록증 기준 */
 export const ISSUER = {
   name: "주식회사 우주시스템",
