@@ -4,20 +4,24 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  Building2,
   Check,
   CircuitBoard,
   Coins,
   Fan,
   FileCheck2,
+  FlaskConical,
   Leaf,
   MemoryStick,
   Monitor,
+  Network,
   Power,
   Radar,
   Recycle,
   Server,
   ShieldCheck,
   Truck,
+  TvMinimalPlay,
   Zap,
 } from "lucide-react";
 
@@ -83,6 +87,34 @@ const TRUST_STRIP = [
 ];
 
 const TRUST = ["24시간 내 픽업", "보안삭제 인증서 발급", "ESG 보고서 지원", "무료 서비스"];
+
+/** 사업계획서 기준 실적 — 말이 아니라 숫자로 증명하는 구간 */
+const TRACK_RECORD = [
+  {
+    icon: Building2,
+    value: "22년",
+    label: "업력",
+    desc: "2003년부터 이어온 현장 경험",
+  },
+  {
+    icon: Network,
+    value: "25개",
+    label: "전국 협력점",
+    desc: "신규 투자 없이 지역별 당일 수거",
+  },
+  {
+    icon: FlaskConical,
+    value: "36배",
+    label: "파일럿 검증",
+    desc: "50대 처리로 가치 상승 실증 완료",
+  },
+  {
+    icon: TvMinimalPlay,
+    value: "12,187명",
+    label: "유튜브 구독자",
+    desc: "'우주아빠TV' 영상 1,500개",
+  },
+];
 
 const CERT_BADGES = [
   "DoD 5220.22-M 인증",
@@ -228,8 +260,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Track record ── */}
+      <section className="bg-background py-12 md:py-[72px]">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 md:px-10">
+          <SectionHeader
+            eyebrow="검증된 실적"
+            title="말이 아니라 숫자로 증명합니다"
+            sub="22년 현장에서 쌓은 인프라 위에 B2B 업사이클링을 얹었습니다"
+          />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {TRACK_RECORD.map((r) => (
+              <div
+                key={r.label}
+                className="rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30"
+              >
+                <div className="mx-auto mb-3.5 flex size-11 items-center justify-center rounded-xl bg-brand-green-soft text-primary ring-1 ring-primary/20">
+                  <r.icon className="size-5" />
+                </div>
+                <div
+                  className="mb-1 text-[26px] font-black leading-none text-primary md:text-[30px]"
+                  style={{ fontFamily: "SDSwagger" }}
+                >
+                  {r.value}
+                </div>
+                <div className="mb-1.5 text-sm font-bold text-foreground">{r.label}</div>
+                <div className="text-xs leading-relaxed text-text-muted">{r.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mx-auto mt-8 max-w-[720px] text-center text-[13px] leading-relaxed text-text-muted">
+            부품 호환성 자동 매칭{" "}
+            <span className="text-text-secondary">특허출원 (4-2023-071209-7)</span>
+            {" — "}수작업 대비 리퍼 효율 3배
+          </p>
+        </div>
+      </section>
+
       {/* ── Process ── */}
-      <section id="process" className="bg-background py-12 md:py-[72px]">
+      <section id="process" className="bg-card py-12 md:py-[72px]">
         <div className="mx-auto max-w-[1280px] px-4 sm:px-6 md:px-10">
           <SectionHeader
             eyebrow="처리 프로세스"
