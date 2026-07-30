@@ -26,7 +26,9 @@ export async function fetchProfile(userId: string): Promise<User | null> {
     id: row.id,
     email: row.email,
     name: row.name ?? row.email.split("@")[0],
-    provider: "google",
+    // profiles 테이블에는 provider가 없다. auth-context가 auth.users의
+    // app_metadata를 보고 실제 값으로 덮어쓴다.
+    provider: "email",
     companyId: row.company_id,
     role: row.role,
     termsAgreed: row.terms_agreed,

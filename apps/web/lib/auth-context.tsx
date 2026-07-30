@@ -9,13 +9,36 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Company, Role, User } from "./types";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+import type { Company, Provider, Role, User } from "./types";
 import { fetchProfile } from "./db/profiles";
 import { fetchCompany } from "./db/companies";
 import { createClient } from "./supabase/client";
 
-/** Supabase가 네이티브로 지원하는 소셜 provider (naver는 커스텀 OIDC 필요 — 추후) */
+/**
+ * Supabase가 네이티브로 지원하는 소셜 provider.
+ *
+ * 2026-07-29 현재 로그인 UI는 이메일/비밀번호로 통일되어 있어 이 경로는
+ * 화면에서 노출되지 않는다. 배선 자체는 동작하므로, 소셜 로그인을 다시 켤 때
+ * 로그인 페이지에 버튼만 붙이면 된다.
+ * (네이버는 네이티브 provider가 아니라 커스텀 OIDC 설정이 추가로 필요하다.)
+ */
 export type OAuthProvider = "google" | "kakao";
+
+/** auth.users.app_metadata.provider → 앱의 Provider 타입 */
+function resolveProvider(authUser: SupabaseUser): Provider {
+  const raw = authUser.app_metadata?.provider;
+  switch (raw) {
+    case "google":
+    case "kakao":
+    case "naver":
+      return raw;
+    default:
+      // Supabase는 이메일/비밀번호 가입을 "email"로 기록한다.
+      return "email";
+  }
+}
 
 interface AuthState {
   user: User | null;
@@ -41,15 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadFromSupabase = useCallback(async (userId: string) => {
+  const loadFromSupabase = useCallback(async (authUser: SupabaseUser) => {
     try {
-      const profile = await fetchProfile(userId);
+      const profile = await fetchProfile(authUser.id);
       if (!profile) {
         setUser(null);
         setCompany(null);
         return;
       }
-      setUser(profile);
+      // provider는 profiles가 아니라 auth.users의 app_metadata에 있다.
+      setUser({ ...profile, provider: resolveProvider(authUser) });
       setCompany(profile.companyId ? await fetchCompany(profile.companyId) : null);
     } catch {
       setUser(null);
@@ -66,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { session },
       } = await supabase.auth.getSession();
       if (active && session?.user) {
-        await loadFromSupabase(session.user.id);
+        await loadFromSupabase(session.user);
       }
       if (active) setIsLoading(false);
     }
@@ -77,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        await loadFromSupabase(session.user.id);
+        await loadFromSupabase(session.user);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setCompany(null);
@@ -135,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user) {
-      await loadFromSupabase(session.user.id);
+      await loadFromSupabase(session.user);
     } else {
       setUser(null);
       setCompany(null);

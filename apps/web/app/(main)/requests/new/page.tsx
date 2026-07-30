@@ -38,7 +38,7 @@ const STEPS = [
 
 export default function NewRequestPage() {
   const { authorized, isLoading } = useRequireAuth();
-  const { company } = useAuth();
+  const { company, user } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState(1);
@@ -117,7 +117,7 @@ export default function NewRequestPage() {
 
       const req = await createRequest({
         companyId: dbCompany.id,
-        createdBy: null,
+        createdBy: user?.id ?? null,
         items: { quantity: qtyNum, manufacturer, age, os, note: note || undefined },
         pickup: {
           date: pickupDate,
