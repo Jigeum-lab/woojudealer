@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Loader2, Mail, ShieldCheck } from "lucide-react";
 
 import { useAuth, useRequireAuth } from "@/lib/auth-context";
-import { fetchCompanies, upsertCompany } from "@/lib/db/companies";
+import { registerCompany } from "@/lib/db/companies";
 import { Company, Provider } from "@/lib/types";
 import { formatBizNo, isValidBizNo } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,15 @@ const PROVIDER_LABEL: Record<Provider, string> = {
   email: "이메일",
 };
 
+const EMPTY_COMPANY: Company = {
+  id: "",
+  name: "",
+  bizNo: "",
+  contact: "",
+  phone: "",
+  address: "",
+};
+
 export default function MyPage() {
   const { authorized } = useRequireAuth();
   const { user, company, updateCompany } = useAuth();
@@ -29,8 +38,13 @@ export default function MyPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (company) setForm({ ...company });
-  }, [company]);
+    if (company) {
+      setForm({ ...company });
+    } else if (user && user.role !== "admin") {
+      // 신규 사용자: 아직 회사가 없어도 빈 폼으로 등록할 수 있게 한다
+      setForm((f) => f ?? { ...EMPTY_COMPANY });
+    }
+  }, [company, user]);
 
   if (!authorized || !user) {
     return (
@@ -49,21 +63,25 @@ export default function MyPage() {
     }
     setSaving(true);
     try {
-      const allCompanies = await fetchCompanies();
-      const existing = allCompanies.find((c) => c.bizNo === form.bizNo);
-      const saved = await upsertCompany({ ...form, id: existing?.id ?? form.id });
+      const saved = await registerCompany(form);
       updateCompany(saved);
       setForm({ ...saved });
       toast.success("회사 정보가 저장되었습니다");
-    } catch {
-      toast.error("저장에 실패했습니다. 다시 시도해주세요");
+    } catch (e) {
+      // supabase-js의 PostgrestError는 Error를 상속하지 않는 버전이 있어 message만 본다
+      if ((e as { message?: string } | null)?.message?.includes("BIZ_NO_TAKEN")) {
+        toast.error("이미 등록된 사업자번호입니다. 담당자에게 문의해주세요");
+      } else {
+        toast.error("저장에 실패했습니다. 다시 시도해주세요");
+      }
     } finally {
       setSaving(false);
     }
   }
 
   const dirty =
-    !!form && !!company && JSON.stringify(form) !== JSON.stringify(company);
+    !!form &&
+    JSON.stringify(form) !== JSON.stringify(company ?? EMPTY_COMPANY);
 
   return (
     <div className="mx-auto w-full max-w-[760px] px-4 sm:px-6 md:px-10 py-10">
@@ -137,7 +155,7 @@ export default function MyPage() {
           <div className="mt-6 flex justify-end gap-2.5">
             <Button
               variant="outline"
-              onClick={() => company && setForm({ ...company })}
+              onClick={() => setForm(company ? { ...company } : { ...EMPTY_COMPANY })}
               disabled={!dirty || saving}
             >
               취소
