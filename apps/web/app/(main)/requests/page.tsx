@@ -136,6 +136,7 @@ function RequestsInner() {
                 key={r.id}
                 request={r}
                 showCompany={user.role === "admin"}
+                canAdvance={user.role === "admin"}
                 companiesMap={companiesMap}
                 expanded={expanded === r.id}
                 onToggle={() =>
@@ -173,6 +174,7 @@ function EmptyState() {
 function RequestCard({
   request,
   showCompany,
+  canAdvance,
   companiesMap,
   expanded,
   onToggle,
@@ -180,6 +182,8 @@ function RequestCard({
 }: {
   request: CollectionRequest;
   showCompany: boolean;
+  /** 상태 전진은 RLS상 관리자만 가능 — 일반 계정에는 버튼을 숨긴다 */
+  canAdvance: boolean;
   companiesMap: Record<string, Company>;
   expanded: boolean;
   onToggle: () => void;
@@ -264,11 +268,13 @@ function RequestCard({
             >
               <FileText className="size-4" /> 인증서 보기
             </Button>
-            <Button onClick={handleAdvance} disabled={advancing || isDone}>
-              {advancing && <Loader2 className="size-4 animate-spin" />}
-              {isDone ? "처리 완료됨" : "다음 단계로"}
-              {!isDone && !advancing && <ArrowRight className="size-4" />}
-            </Button>
+            {canAdvance && (
+              <Button onClick={handleAdvance} disabled={advancing || isDone}>
+                {advancing && <Loader2 className="size-4 animate-spin" />}
+                {isDone ? "처리 완료됨" : "다음 단계로"}
+                {!isDone && !advancing && <ArrowRight className="size-4" />}
+              </Button>
+            )}
           </div>
         </div>
       )}
