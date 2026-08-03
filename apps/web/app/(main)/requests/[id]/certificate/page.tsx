@@ -5,7 +5,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Loader2, ShieldX } from "lucide-react";
 
-import Image from "next/image";
 
 import { useRequireAuth } from "@/lib/auth-context";
 import { fetchRequest, statusReached } from "@/lib/db/requests";
@@ -72,11 +71,12 @@ export default function CertificatePage({
         scale: 2,
         backgroundColor: "#ffffff",
       });
-      const imgData = canvas.toDataURL("image/png");
+      // PNG는 10MB를 넘겨 JPEG로 압축한다 (단색 배경이라 화질 손실 체감 없음)
+      const imgData = canvas.toDataURL("image/jpeg", 0.85);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const imgH = (canvas.height * pageW) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pageW, imgH);
+      pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH);
       pdf.save(`certificate_${cert.certNo}.pdf`);
       toast.success("인증서를 다운로드했습니다");
     } catch {
@@ -146,12 +146,15 @@ export default function CertificatePage({
             {/* Header */}
             <div className="text-center">
               <div className="mb-3 inline-flex items-center gap-2">
-                <Image
-                  src="/wooju/logo.svg"
+                {/* html2canvas가 logo.svg를 못 그려 PDF에서 얼룩이 되므로
+                    래스터본(logo-white.png)을 쓴다 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/wooju/logo-white.png"
                   alt="우주딜러"
                   width={88}
-                  height={32}
-                  className="h-7 w-auto invert"
+                  height={33}
+                  className="h-7 w-auto"
                 />
               </div>
               <h1 className="text-[34px] font-extrabold tracking-[-0.01em] text-foreground">
