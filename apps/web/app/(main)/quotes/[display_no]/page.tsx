@@ -31,7 +31,7 @@ export default function QuoteDocumentPage({
   params: Promise<{ display_no: string }>;
 }) {
   const { display_no } = use(params);
-  const { authorized } = useRequireAuth();
+  const { authorized } = useRequireAuth("admin");
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [customer, setCustomer] = useState<Company | null>(null);

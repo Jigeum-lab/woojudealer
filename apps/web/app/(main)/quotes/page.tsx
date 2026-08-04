@@ -12,7 +12,7 @@ import { formatDate, formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 export default function QuotesPage() {
-  const { authorized } = useRequireAuth();
+  const { authorized } = useRequireAuth("admin");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [ready, setReady] = useState(false);
 

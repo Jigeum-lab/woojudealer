@@ -36,26 +36,56 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const COMPANY_NAV = [
-  { href: "/requests/new", label: "수거 신청", icon: Plus },
-  { href: "/requests", label: "내 신청", icon: ClipboardList },
-  { href: "/quotes", label: "견적", icon: Calculator },
-  { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
-  { href: "/settlements", label: "정산 내역", icon: Wallet },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof Plus;
+}
+
+interface NavGroup {
+  /** 그룹 라벨 — 관리자처럼 성격이 다른 메뉴 묶음을 시각 분리할 때만 */
+  label?: string;
+  items: NavItem[];
+}
+
+// 고객은 수거·정산 플로우만 본다. 견적·재고 ERP는 내부(관리자) 전용.
+const COMPANY_NAV: NavGroup[] = [
+  {
+    items: [
+      { href: "/requests/new", label: "수거 신청", icon: Plus },
+      { href: "/requests", label: "내 신청", icon: ClipboardList },
+      { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
+      { href: "/settlements", label: "정산 내역", icon: Wallet },
+    ],
+  },
 ];
 
-const PUBLIC_NAV = [
-  { href: "/requests/new", label: "수거 신청", icon: Plus },
-  { href: "/requests", label: "내 신청", icon: ClipboardList },
-  { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
-  { href: "/support", label: "FAQ", icon: HelpCircle },
+const PUBLIC_NAV: NavGroup[] = [
+  {
+    items: [
+      { href: "/requests/new", label: "수거 신청", icon: Plus },
+      { href: "/requests", label: "내 신청", icon: ClipboardList },
+      { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
+      { href: "/support", label: "FAQ", icon: HelpCircle },
+    ],
+  },
 ];
 
-const ADMIN_NAV = [
-  { href: "/admin", label: "관리자", icon: ShieldCheck },
-  { href: "/admin/parts", label: "부품·재고", icon: Boxes },
-  { href: "/quotes", label: "견적", icon: Calculator },
-  { href: "/settlements", label: "정산 관리", icon: Wallet },
+const ADMIN_NAV: NavGroup[] = [
+  {
+    label: "수거 운영",
+    items: [
+      { href: "/admin", label: "관리자", icon: ShieldCheck },
+      { href: "/settlements", label: "정산 관리", icon: Wallet },
+    ],
+  },
+  {
+    label: "견적·재고 ERP",
+    items: [
+      { href: "/quotes", label: "견적", icon: Calculator },
+      { href: "/admin/parts", label: "부품·재고", icon: Boxes },
+    ],
+  },
 ];
 
 export function SiteHeader() {
@@ -74,7 +104,12 @@ export function SiteHeader() {
   }
 
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+    href === "/"
+      ? pathname === "/"
+      : href === "/admin"
+        ? // /admin/parts는 별도 메뉴라 관리자 탭이 같이 켜지지 않게 정확 일치
+          pathname === "/admin"
+        : pathname.startsWith(href);
 
   const initials = user?.name?.charAt(0).toUpperCase() ?? "?";
 
@@ -96,27 +131,42 @@ export function SiteHeader() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 md:flex">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              // 인증 상태가 세션→프로필→회사 3단계로 확정되며 헤더가 여러 번
-              // 재렌더되는데, 그때마다 링크 prefetch가 다시 발생해 로그인 직후
-              // RSC 요청이 30건 가까이 몰렸다. 모두 로그인이 필요한 화면이라
-              // proxy를 거치므로 비용이 크다. 실제 이동 시에만 받는다.
-              prefetch={false}
-              className={cn(
-                "relative rounded-md px-3.5 py-2 text-sm font-medium transition-colors",
-                isActive(item.href)
-                  ? "text-primary"
-                  : "text-text-secondary hover:bg-secondary hover:text-foreground"
+          {nav.map((group, gi) => (
+            <div key={group.label ?? gi} className="flex items-center gap-0.5">
+              {gi > 0 && (
+                <span
+                  aria-hidden
+                  className="mx-2 h-4 w-px shrink-0 bg-border-strong"
+                />
               )}
-            >
-              {item.label}
-              {isActive(item.href) && (
-                <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-primary" />
+              {group.label && (
+                <span className="mr-1 hidden text-[11px] font-semibold tracking-wide text-text-muted lg:inline">
+                  {group.label}
+                </span>
               )}
-            </Link>
+              {group.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  // 인증 상태가 세션→프로필→회사 3단계로 확정되며 헤더가 여러 번
+                  // 재렌더되는데, 그때마다 링크 prefetch가 다시 발생해 로그인 직후
+                  // RSC 요청이 30건 가까이 몰렸다. 모두 로그인이 필요한 화면이라
+                  // proxy를 거치므로 비용이 크다. 실제 이동 시에만 받는다.
+                  prefetch={false}
+                  className={cn(
+                    "relative rounded-md px-3.5 py-2 text-sm font-medium transition-colors",
+                    isActive(item.href)
+                      ? "text-primary"
+                      : "text-text-secondary hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  {item.label}
+                  {isActive(item.href) && (
+                    <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-primary" />
+                  )}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -197,22 +247,32 @@ export function SiteHeader() {
 
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <div className="flex flex-col gap-1">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={false}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive(item.href)
-                      ? "bg-brand-green-soft text-primary"
-                      : "text-text-secondary hover:bg-secondary hover:text-foreground"
+              {nav.map((group, gi) => (
+                <div key={group.label ?? gi} className="flex flex-col gap-1">
+                  {gi > 0 && <div className="my-2 h-px bg-border" />}
+                  {group.label && (
+                    <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-text-muted">
+                      {group.label}
+                    </div>
                   )}
-                >
-                  <item.icon className="size-4 shrink-0" />
-                  {item.label}
-                </Link>
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={false}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                        isActive(item.href)
+                          ? "bg-brand-green-soft text-primary"
+                          : "text-text-secondary hover:bg-secondary hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="size-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               ))}
             </div>
           </nav>

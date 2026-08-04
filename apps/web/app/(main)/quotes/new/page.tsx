@@ -142,7 +142,7 @@ function PartPicker({
 }
 
 export default function NewQuotePage() {
-  const { authorized } = useRequireAuth();
+  const { authorized } = useRequireAuth("admin");
   const { user, company } = useAuth();
   const router = useRouter();
 
