@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
+import { SocialLogin } from "@/components/social-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -132,6 +133,8 @@ function LoginInner() {
             로그인
           </Button>
         </form>
+
+        <SocialLogin next={returnTo} agreed={agreed} />
 
         <p className="mt-4 text-center text-[13px] text-text-muted">
           계정이 없나요?{" "}

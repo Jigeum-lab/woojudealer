@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth-context";
+import { SocialLogin } from "@/components/social-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +36,7 @@ function SignupInner() {
     setLoading(true);
     try {
       await signUp(form.email, form.password, form.name);
-      toast.success("가입이 완료됐습니다! 이메일 인증 후 로그인해주세요.");
+      toast.success("가입이 완료됐습니다! 바로 로그인해주세요.");
       router.push(`/login?return_to=${encodeURIComponent(returnTo)}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "회원가입 실패";
@@ -150,6 +151,8 @@ function SignupInner() {
             가입하기
           </Button>
         </form>
+
+        <SocialLogin next={returnTo} agreed={agreed} />
 
         <p className="mt-5 text-center text-[13px] text-text-muted">
           이미 계정이 있나요?{" "}
