@@ -237,6 +237,51 @@ export const QUOTE_TERMS = {
 
 export const VAT_RATE = 0.1;
 
+/* ── 견적 요청 (inquiries) ────────────────────────────
+   수거 신청 앞단의 문의 단계. 로그인 없이도 남길 수 있다. */
+
+/** 고객 시점의 방향 — 우리에게 팔거나(매입), 우리에게서 사거나(판매) */
+export type InquiryKind = "sell_to_us" | "buy_from_us";
+
+export type InquiryStatus = "new" | "contacted" | "quoted" | "closed";
+
+export const INQUIRY_KIND_META: Record<
+  InquiryKind,
+  { label: string; short: string }
+> = {
+  sell_to_us: { label: "매입 견적 (폐PC 처분)", short: "매입" },
+  buy_from_us: { label: "판매 견적 (재생PC 구매)", short: "판매" },
+};
+
+export const INQUIRY_STATUS_META: Record<
+  InquiryStatus,
+  { label: string; color: string }
+> = {
+  new: { label: "접수", color: "text-primary" },
+  contacted: { label: "연락 완료", color: "text-status-pickup" },
+  quoted: { label: "견적 발송", color: "text-status-wiping" },
+  closed: { label: "종료", color: "text-text-muted" },
+};
+
+export interface Inquiry {
+  id: string;
+  displayNo: string;
+  kind: InquiryKind;
+  status: InquiryStatus;
+  contactName: string;
+  contactPhone: string;
+  contactEmail?: string;
+  companyName?: string;
+  quantity: number;
+  specLevel?: string;
+  purchasePeriod?: string;
+  purpose?: string;
+  budgetPerUnit?: number;
+  note?: string;
+  adminMemo?: string;
+  createdAt: string;
+}
+
 /** 우주딜러 운영사 (인증서 발급 주체) — 사업자등록증 기준 */
 export const ISSUER = {
   name: "주식회사 우주시스템",

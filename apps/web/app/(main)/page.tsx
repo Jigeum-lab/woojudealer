@@ -130,6 +130,14 @@ export default function LandingPage() {
               <p className="mt-3 text-[13px] text-text-muted">
                 수량만 알려주시면 됩니다. 수거 비용 없음.
               </p>
+              {/* 아직 맡길지 안 정한 사람에게 주는 앞단 경로 */}
+              <Link
+                href="/estimate/sell"
+                className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
+              >
+                얼마 받을 수 있는지 먼저 확인하기
+                <ArrowRight className="size-3.5" />
+              </Link>
             </div>
 
             <dl className="flex flex-wrap gap-x-10 gap-y-4 border-t border-border pt-6">
@@ -323,7 +331,7 @@ export default function LandingPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/support">자주 묻는 질문</Link>
+              <Link href="/estimate">견적부터 받아보기</Link>
             </Button>
           </div>
         </div>
