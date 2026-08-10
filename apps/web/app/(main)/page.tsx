@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Building2, FlaskConical, Network, TvMinimalPlay } from "lucide-react";
 
@@ -84,76 +85,99 @@ export default function LandingPage() {
   return (
     <>
       {/* ───────────────── 히어로 ───────────────── */}
-      <section className="relative overflow-hidden border-b border-border bg-background">
+      <section className="relative isolate overflow-hidden border-b border-border">
+        {/* 배경 사진 — 우주딜러 기존 사이트에서 쓰던 이미지.
+            LCP라 priority로 먼저 받고, 오버레이는 글자 대비를 위해 짙게 깐다. */}
+        <Image
+          src="/wooju/landing/hero-bg.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="-z-10 object-cover object-center"
+        />
+        {/* 사진이 보일 만큼만 덮는다. 위는 헤더와 이어지게, 아래는 다음 섹션으로
+            자연스럽게 떨어지게 어둡히고, 가운데는 열어 둔다. */}
+        <div aria-hidden className="absolute inset-0 -z-10 bg-background/45" />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--border-strong) 1px, transparent 1px), linear-gradient(90deg, var(--border-strong) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-          }}
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-transparent to-background"
         />
 
-        <div className="relative mx-auto grid max-w-[1240px] gap-12 px-4 py-16 sm:px-6 md:px-10 md:py-20 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16">
+        <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-24 text-center sm:px-6 md:py-32">
+          <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
+            기업 · PC방 · 공공기관 폐PC 원스톱
+          </p>
+
+          <h1 className="mb-6 text-[34px] font-black leading-[1.14] tracking-[-0.03em] text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.65)] sm:text-[46px] md:text-[58px]">
+            수거하고, 지우고,
+            <br />
+            증명하고,{" "}
+            <span
+              className="text-primary"
+              style={{
+                fontFamily: "var(--font-display)",
+                textShadow: "0 0 44px rgba(0,213,99,0.45)",
+              }}
+            >
+              다시 팝니다
+            </span>
+          </h1>
+
+          {/* 사진 위 본문이라 기본 본문색보다 밝게 — 대비 확보 */}
+          <p className="mb-9 max-w-[560px] text-[17px] leading-relaxed text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">
+            고물상에 넘기면 대당 5,000원입니다. 우주딜러는 저장장치를 국제표준으로
+            지우고 인증서를 발급한 뒤, 살아있는 부품으로 값을 되찾아 돌려드립니다.
+          </p>
+
+          <Button asChild variant="cta" size="lg">
+            <Link href={requestHref}>
+              무료 수거 신청 <ArrowRight className="size-5" />
+            </Link>
+          </Button>
+          <p className="mt-3 text-[13px] text-text-muted">
+            수량만 알려주시면 됩니다. 수거 비용 없음.
+          </p>
+          {/* 아직 맡길지 안 정한 사람에게 주는 앞단 경로 */}
+          <Link
+            href="/estimate/sell"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
+          >
+            얼마 받을 수 있는지 먼저 확인하기
+            <ArrowRight className="size-3.5" />
+          </Link>
+
+          <dl className="mt-12 flex flex-wrap justify-center gap-x-10 gap-y-4 border-t border-border/60 pt-7">
+            {/* 헤드라인의 세 동사(수거·삭제·증명)를 그대로 받는다.
+                업력·협력점 같은 신뢰 지표는 아래 실적 섹션 몫이다 */}
+            {[
+              ["24시간", "내 수거"],
+              ["DoD 5220.22-M", "국제표준 삭제"],
+              ["QR 검증", "누구나 조회"],
+            ].map(([v, l]) => (
+              <div key={l}>
+                <dt className="font-mono text-[15px] font-semibold text-foreground">{v}</dt>
+                <dd className="mt-0.5 text-[13px] text-text-muted">{l}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* ───────────────── 분해도 ───────────────── */}
+      <section className="border-b border-border bg-background py-16 md:py-24">
+        <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
           <div>
-            <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-text-muted">
-              기업 · PC방 · 공공기관 폐PC 원스톱
-            </p>
-
-            <h1 className="mb-6 text-[34px] font-black leading-[1.14] tracking-[-0.03em] text-foreground sm:text-[46px] md:text-[56px]">
-              수거하고, 지우고,
+            <Eyebrow>한 대에서</Eyebrow>
+            <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
+              고철 5,000원이
               <br />
-              증명하고,{" "}
-              <span
-                className="text-primary"
-                style={{
-                  fontFamily: "var(--font-display)",
-                  textShadow: "0 0 44px rgba(0,213,99,0.45)",
-                }}
-              >
-                다시 팝니다
-              </span>
-            </h1>
-
-            <p className="mb-9 max-w-[520px] text-[17px] leading-relaxed text-text-secondary">
-              고물상에 넘기면 대당 5,000원입니다. 우주딜러는 저장장치를 국제표준으로
-              지우고 인증서를 발급한 뒤, 살아있는 부품으로 값을 되찾아 돌려드립니다.
+              아닙니다
+            </h2>
+            <p className="text-[15px] leading-relaxed text-text-secondary">
+              저장장치는 국제표준으로 지우고, 살아있는 부품은 검증해 되팝니다.
+              부품마다 값을 매겨 합산한 금액을 정산으로 돌려드립니다.
             </p>
-
-            <div className="mb-10">
-              <Button asChild variant="cta" size="lg">
-                <Link href={requestHref}>
-                  무료 수거 신청 <ArrowRight className="size-5" />
-                </Link>
-              </Button>
-              <p className="mt-3 text-[13px] text-text-muted">
-                수량만 알려주시면 됩니다. 수거 비용 없음.
-              </p>
-              {/* 아직 맡길지 안 정한 사람에게 주는 앞단 경로 */}
-              <Link
-                href="/estimate/sell"
-                className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
-              >
-                얼마 받을 수 있는지 먼저 확인하기
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-
-            <dl className="flex flex-wrap gap-x-10 gap-y-4 border-t border-border pt-6">
-              {/* 헤드라인의 세 동사(수거·삭제·증명)를 그대로 받는다.
-                  업력·협력점 같은 신뢰 지표는 아래 실적 섹션 몫이다 */}
-              {[
-                ["24시간", "내 수거"],
-                ["DoD 5220.22-M", "국제표준 삭제"],
-                ["QR 검증", "누구나 조회"],
-              ].map(([v, l]) => (
-                <div key={l}>
-                  <dt className="font-mono text-[15px] font-semibold text-foreground">{v}</dt>
-                  <dd className="mt-0.5 text-[13px] text-text-muted">{l}</dd>
-                </div>
-              ))}
-            </dl>
           </div>
 
           <ExplodedDiagram />
