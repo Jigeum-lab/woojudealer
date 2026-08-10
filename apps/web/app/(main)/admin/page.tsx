@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Bar } from "react-chartjs-2";
 import {
@@ -10,11 +11,20 @@ import {
   LinearScale,
   Tooltip,
 } from "chart.js";
-import { Loader2, RefreshCw, Search } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  Calculator,
+  Inbox,
+  Loader2,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
 import { fetchAllRequests, setRequestStatus } from "@/lib/db/requests";
 import { fetchCompanies } from "@/lib/db/companies";
+import { fetchInquiries } from "@/lib/db/inquiries";
 import {
   CollectionRequest,
   Company,
@@ -51,12 +61,20 @@ export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | RequestStatus>("all");
+  /** 아직 연락하지 않은 견적 요청 수 — 알림이 없으므로 여기서만 드러난다 */
+  const [pendingInquiries, setPendingInquiries] = useState(0);
 
   const reload = useCallback(async () => {
     try {
-      const [reqs, cos] = await Promise.all([fetchAllRequests(), fetchCompanies()]);
+      const [reqs, cos, inquiries] = await Promise.all([
+        fetchAllRequests(),
+        fetchCompanies(),
+        // 견적 요청 조회가 실패해도 대시보드 본문은 그려야 한다
+        fetchInquiries().catch(() => []),
+      ]);
       setRequests(reqs);
       setCompaniesMap(Object.fromEntries(cos.map((c) => [c.id, c])));
+      setPendingInquiries(inquiries.filter((i) => i.status === "new").length);
     } catch {
       // DB 오류 시에도 ready 처리
     } finally {
@@ -132,6 +150,39 @@ export default function AdminPage() {
       </div>
 
       <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10 py-8">
+        {/* 견적 요청은 알림이 없다. 놓치지 않도록 대기 건수를 맨 위에 세운다 */}
+        {pendingInquiries > 0 && (
+          <Link
+            href="/admin/inquiries"
+            className="mb-6 flex items-center gap-4 rounded-xl border border-primary/40 bg-brand-green-soft px-5 py-4 transition-colors hover:border-primary"
+          >
+            <Inbox className="size-5 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-bold text-foreground">
+                연락 대기 {pendingInquiries}건
+              </p>
+              <p className="mt-0.5 text-[13px] text-text-secondary">
+                아직 연락하지 않은 견적 요청이 있습니다
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-primary">
+              문의함 열기 <ArrowRight className="size-4" />
+            </span>
+          </Link>
+        )}
+
+        {/* 운영 화면은 헤더 메뉴에 없다 — 진입로를 여기 둔다 */}
+        <div className="mb-6 grid gap-3 sm:grid-cols-3">
+          <OpsLink
+            href="/admin/inquiries"
+            icon={Inbox}
+            label="견적 문의함"
+            badge={pendingInquiries || undefined}
+          />
+          <OpsLink href="/quotes" icon={Calculator} label="견적서" />
+          <OpsLink href="/admin/parts" icon={Boxes} label="부품·재고" />
+        </div>
+
         {/* Summary */}
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <SummaryCard label="전체 신청" value={stats.total} />
@@ -274,6 +325,37 @@ export default function AdminPage() {
         </div>
       </div>
     </>
+  );
+}
+
+/** 운영 화면 진입 타일. badge는 처리해야 할 건수 */
+function OpsLink({
+  href,
+  icon: Icon,
+  label,
+  badge,
+}: {
+  href: string;
+  icon: typeof Inbox;
+  label: string;
+  badge?: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:border-border-strong"
+    >
+      <Icon className="size-4 shrink-0 text-text-muted" />
+      <span className="flex-1 text-[14px] font-semibold text-foreground">
+        {label}
+      </span>
+      {badge !== undefined && (
+        <span className="rounded-full bg-primary px-2 py-0.5 text-[12px] font-bold text-primary-foreground">
+          {badge}
+        </span>
+      )}
+      <ArrowRight className="size-4 shrink-0 text-text-muted" />
+    </Link>
   );
 }
 
