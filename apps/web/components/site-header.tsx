@@ -6,8 +6,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Calculator,
   ClipboardList,
   HelpCircle,
+  ListChecks,
   LogOut,
   Menu,
   Plus,
@@ -16,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
+import { useMode, type SiteMode } from "@/lib/mode-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,25 +37,94 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * 네비는 고객 플로우(수거·정산)만 노출한다.
+ * 네비는 고객 플로우만 노출한다.
  *
  * 운영 화면(/admin, /admin/parts, /quotes)은 관리자로 로그인해도 메뉴에
  * 띄우지 않는다 — 주소를 직접 입력해 들어간다. 접근 통제는 각 구역의
  * layout(서버) + RLS가 담당하므로, 메뉴를 숨겨도 보안은 그대로다.
+ *
+ * 모드에 따라 메뉴가 통째로 바뀐다. 처분 쪽 메뉴만 있으면 PC를 사러 온
+ * 사람은 갈 곳이 없다.
  */
-const COMPANY_NAV = [
-  { href: "/requests/new", label: "수거 신청", icon: Plus },
-  { href: "/requests", label: "내 신청", icon: ClipboardList },
-  { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
-  { href: "/settlements", label: "정산 내역", icon: Wallet },
-];
+const NAV: Record<SiteMode, { auth: NavItem[]; guest: NavItem[] }> = {
+  sell: {
+    auth: [
+      { href: "/requests/new", label: "수거 신청", icon: Plus },
+      { href: "/requests", label: "내 신청", icon: ClipboardList },
+      { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
+      { href: "/settlements", label: "정산 내역", icon: Wallet },
+    ],
+    guest: [
+      { href: "/requests/new", label: "수거 신청", icon: Plus },
+      { href: "/requests", label: "내 신청", icon: ClipboardList },
+      { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
+      { href: "/support", label: "FAQ", icon: HelpCircle },
+    ],
+  },
+  buy: {
+    auth: [
+      { href: "/estimate/pc", label: "견적 짜보기", icon: Calculator },
+      { href: "/estimate/buy", label: "견적 요청", icon: ListChecks },
+      { href: "/support", label: "FAQ", icon: HelpCircle },
+    ],
+    guest: [
+      { href: "/estimate/pc", label: "견적 짜보기", icon: Calculator },
+      { href: "/estimate/buy", label: "견적 요청", icon: ListChecks },
+      { href: "/support", label: "FAQ", icon: HelpCircle },
+    ],
+  },
+};
 
-const PUBLIC_NAV = [
-  { href: "/requests/new", label: "수거 신청", icon: Plus },
-  { href: "/requests", label: "내 신청", icon: ClipboardList },
-  { href: "/dashboard", label: "ESG 대시보드", icon: BarChart3 },
-  { href: "/support", label: "FAQ", icon: HelpCircle },
-];
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof Plus;
+}
+
+/** 처분/구매 전환. 헤더에 늘 떠 있어 어느 페이지에서도 바꿀 수 있다 */
+function ModeToggle({
+  mode,
+  onChange,
+  className,
+}: {
+  mode: SiteMode;
+  onChange: (m: SiteMode) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="찾으시는 것"
+      className={cn(
+        "inline-flex shrink-0 rounded-full border border-border bg-secondary p-0.5",
+        className
+      )}
+    >
+      {(
+        [
+          ["sell", "처분"],
+          ["buy", "구매"],
+        ] as [SiteMode, string][]
+      ).map(([m, label]) => (
+        <button
+          key={m}
+          type="button"
+          role="tab"
+          aria-selected={mode === m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "rounded-full px-3 py-1 text-[13px] font-bold transition-colors",
+            mode === m
+              ? "bg-primary text-primary-foreground"
+              : "text-text-secondary hover:text-foreground"
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function SiteHeader() {
   const { user, logout } = useAuth();
@@ -60,7 +132,16 @@ export function SiteHeader() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const nav = user ? COMPANY_NAV : PUBLIC_NAV;
+  const { mode, setMode } = useMode();
+  const nav = user ? NAV[mode].auth : NAV[mode].guest;
+
+  // 랜딩 밖에서 모드를 바꾸면 그 모드의 랜딩으로 보낸다 —
+  // 메뉴만 갈리고 화면은 그대로면 뭐가 바뀐 건지 알 수 없다.
+  function handleMode(next: SiteMode) {
+    setMode(next);
+    setMobileOpen(false);
+    if (pathname !== "/") router.push(next === "buy" ? "/?mode=buy" : "/");
+  }
 
   function handleLogout() {
     logout();
@@ -77,17 +158,20 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 md:px-10">
 
-        {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center">
-          <Image
-            src="/wooju/logo.svg"
-            alt="우주딜러"
-            width={74}
-            height={28}
-            priority
-            className="h-6 w-auto"
-          />
-        </Link>
+        {/* Logo + 전환 */}
+        <div className="flex shrink-0 items-center gap-4">
+          <Link href="/" className="flex shrink-0 items-center">
+            <Image
+              src="/wooju/logo.svg"
+              alt="우주딜러"
+              width={74}
+              height={28}
+              priority
+              className="h-6 w-auto"
+            />
+          </Link>
+          <ModeToggle mode={mode} onChange={handleMode} />
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 md:flex">

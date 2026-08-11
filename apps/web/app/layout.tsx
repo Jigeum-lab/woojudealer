@@ -3,6 +3,7 @@ import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "@/lib/auth-context";
+import { ModeProvider } from "@/lib/mode-context";
 import { Toaster } from "@/components/ui/sonner";
 
 const noto = Noto_Sans_KR({
@@ -47,7 +48,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ModeProvider>{children}</ModeProvider>
+        </AuthProvider>
         <Toaster richColors closeButton theme="dark" />
       </body>
     </html>

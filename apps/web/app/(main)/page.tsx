@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowRight, Building2, FlaskConical, Network, TvMinimalPlay } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
+import { useMode } from "@/lib/mode-context";
 import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-public";
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -114,38 +115,6 @@ const HERO: Record<
     ],
   },
 };
-
-/** 히어로 위 전환 토글 */
-function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  return (
-    <div
-      role="tablist"
-      aria-label="찾으시는 것"
-      className="mb-8 inline-flex rounded-full border border-white/25 bg-black/45 p-1 backdrop-blur-sm"
-    >
-      {(
-        [
-          ["sell", "처분합니다"],
-          ["buy", "구매합니다"],
-        ] as [Mode, string][]
-      ).map(([m, label]) => (
-        <button
-          key={m}
-          role="tab"
-          aria-selected={mode === m}
-          onClick={() => onChange(m)}
-          className={`rounded-full px-5 py-2 text-[14px] font-bold transition-colors ${
-            mode === m
-              ? "bg-primary text-primary-foreground"
-              : "text-white/80 hover:text-white"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 
 /**
@@ -308,7 +277,7 @@ function BuySections() {
                       c.ok ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
                     }`}
                   >
-                    {c.ok ? "✓" : "✕"}
+                    {c.ok ? "\u2713" : "\u2715"}
                   </span>
                   <div className="min-w-0">
                     <p
@@ -351,15 +320,8 @@ export default function LandingPage() {
   const { user } = useAuth();
   const requestHref = user ? "/requests/new" : "/login?return_to=%2Frequests%2Fnew";
 
-  // ?mode=buy 로 들어오면 구매 쪽부터 보여준다 — 링크로 바로 보낼 수 있게.
-  // useSearchParams를 쓰면 Suspense 경계 전체가 정적 HTML에서 빠져 검색엔진이
-  // 빈 페이지를 보게 되므로, 마운트 후 location에서 직접 읽는다.
-  const [mode, setMode] = useState<Mode>("sell");
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("mode") === "buy") {
-      setMode("buy");
-    }
-  }, []);
+  // 전환은 헤더 토글이 담당한다. 랜딩은 그 값을 받아 본문만 바꾼다.
+  const { mode } = useMode();
 
   const hero = HERO[mode];
   const heroCtaHref = mode === "sell" ? requestHref : hero.cta.href;
@@ -387,8 +349,6 @@ export default function LandingPage() {
         />
 
         <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-20 text-center sm:px-6 md:py-28">
-          <ModeToggle mode={mode} onChange={setMode} />
-
           <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
             {hero.eyebrow}
           </p>
