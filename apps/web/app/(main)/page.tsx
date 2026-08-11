@@ -1,9 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, FlaskConical, Network, TvMinimalPlay } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -348,16 +347,19 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LandingInner() {
+export default function LandingPage() {
   const { user } = useAuth();
-  const params = useSearchParams();
   const requestHref = user ? "/requests/new" : "/login?return_to=%2Frequests%2Fnew";
 
-  // ?mode=buy 로 들어오면 구매 쪽부터 보여준다 — 링크로 바로 보낼 수 있게
+  // ?mode=buy 로 들어오면 구매 쪽부터 보여준다 — 링크로 바로 보낼 수 있게.
+  // useSearchParams를 쓰면 Suspense 경계 전체가 정적 HTML에서 빠져 검색엔진이
+  // 빈 페이지를 보게 되므로, 마운트 후 location에서 직접 읽는다.
   const [mode, setMode] = useState<Mode>("sell");
   useEffect(() => {
-    if (params.get("mode") === "buy") setMode("buy");
-  }, [params]);
+    if (new URLSearchParams(window.location.search).get("mode") === "buy") {
+      setMode("buy");
+    }
+  }, []);
 
   const hero = HERO[mode];
   const heroCtaHref = mode === "sell" ? requestHref : hero.cta.href;
@@ -654,11 +656,3 @@ function LandingInner() {
   );
 }
 
-export default function LandingPage() {
-  // useSearchParams를 쓰므로 Suspense 경계가 필요하다
-  return (
-    <Suspense fallback={null}>
-      <LandingInner />
-    </Suspense>
-  );
-}
