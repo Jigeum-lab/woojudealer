@@ -139,7 +139,7 @@ function BuySections() {
     <>
       {/* 추천 사양 */}
       <section className="border-b border-border bg-background py-16 md:py-24">
-        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 md:px-10">
+        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10">
           <div className="mb-12 max-w-[660px]">
             <Eyebrow>추천 사양</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
@@ -219,7 +219,7 @@ function BuySections() {
 
       {/* 왜 믿을 수 있나 */}
       <section className="bg-card py-16 md:py-24">
-        <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+        <div className="mx-auto grid w-full max-w-[1280px] gap-10 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
             <Eyebrow>왜 싼가</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
@@ -406,7 +406,7 @@ export default function LandingPage() {
         <>
       {/* ───────────────── 분해도 ───────────────── */}
       <section className="border-b border-border bg-background py-16 md:py-24">
-        <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
+        <div className="mx-auto grid w-full max-w-[1280px] gap-10 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
             <Eyebrow>한 대에서</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
@@ -426,7 +426,7 @@ export default function LandingPage() {
 
       {/* ───────────────── 공정 ───────────────── */}
       <section className="bg-card py-16 md:py-24">
-        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 md:px-10">
+        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10">
           <div className="mb-12 max-w-[660px]">
             <Eyebrow>처리 흐름</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
@@ -476,7 +476,7 @@ export default function LandingPage() {
 
       {/* ───────────────── 증명 ───────────────── */}
       <section className="border-y border-border bg-background py-16 md:py-24">
-        <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+        <div className="mx-auto grid w-full max-w-[1280px] gap-10 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
             <Eyebrow>검증</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
@@ -541,7 +541,7 @@ export default function LandingPage() {
 
       {/* ───────────────── 실적 ───────────────── */}
       <section className="bg-card py-16 md:py-24">
-        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 md:px-10">
+        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10">
           <div className="mb-12 max-w-[720px]">
             <Eyebrow>근거</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">

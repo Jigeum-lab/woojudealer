@@ -324,7 +324,7 @@ export default function BuildEstimatePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 md:px-10">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-32 pt-10 sm:px-6 md:px-10 lg:pb-10">
       <Link
         href="/estimate"
         className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-text-muted transition-colors hover:text-foreground"
@@ -634,6 +634,39 @@ export default function BuildEstimatePage() {
               </form>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 좁은 화면 전용 하단 바 — lg에서는 오른쪽 요약이 sticky라 필요 없다 */}
+      {pickedCount > 0 && !showContact && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md lg:hidden">
+          <div className="mx-auto flex max-w-[1280px] items-center gap-4 px-4 py-3 sm:px-6">
+            <div className="min-w-0 flex-1">
+              <div className="text-[11.5px] text-text-muted">
+                합계 (VAT 별도) · {pickedCount}개 품목
+              </div>
+              <div className="font-mono text-[19px] font-extrabold text-primary">
+                {formatWon(totals.grand)}
+              </div>
+            </div>
+            <Button
+              variant="cta"
+              disabled={blocked || missing.length > 0}
+              onClick={() => {
+                setShowContact(true);
+                window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+              }}
+            >
+              견적 요청
+            </Button>
+          </div>
+          {(blocked || missing.length > 0) && (
+            <p className="px-4 pb-2.5 text-[11.5px] text-text-muted sm:px-6">
+              {blocked
+                ? "조립되지 않는 구성입니다. 호환성 항목을 확인해주세요."
+                : `${missing.map((c) => CATEGORY_META[c].label).join(" · ")} 선택 필요`}
+            </p>
+          )}
         </div>
       )}
 

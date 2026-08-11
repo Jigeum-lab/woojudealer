@@ -82,7 +82,7 @@ export default function QuoteDocumentPage({
   const vatNote = quote.vatIncluded ? "(VAT포함)" : "(VAT별도)";
 
   return (
-    <div className="mx-auto w-full max-w-[900px] px-4 py-8">
+    <div className="mx-auto w-full max-w-[1280px] py-8 px-4 sm:px-6 md:px-10">
       {/* 화면 전용 툴바 — 인쇄 시 숨김 */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link

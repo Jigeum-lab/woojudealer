@@ -298,7 +298,7 @@ export default function NewQuotePage() {
   if (!authorized) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-8">
+    <div className="mx-auto w-full max-w-[1280px] py-8 px-4 sm:px-6 md:px-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">견적 작성</h1>
