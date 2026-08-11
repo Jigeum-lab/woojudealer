@@ -18,11 +18,11 @@ const PATHS = [
     desc: "쓰지 않는 PC가 얼마나 되는지 알려주시면 개략 금액을 회신드립니다. 사양을 모르셔도 됩니다.",
   },
   {
-    href: "/estimate/buy",
+    href: "/estimate/build",
     icon: ShoppingCart,
     eyebrow: "판매",
     title: "재생 PC를 구매하려고 합니다",
-    desc: "용도와 예산을 알려주시면 부품 재고에서 사양을 구성해 견적서를 보내드립니다.",
+    desc: "부품을 직접 담으면 호환성과 금액이 바로 나옵니다. 고르기 어려우시면 용도·예산만 남기셔도 됩니다.",
   },
 ];
 

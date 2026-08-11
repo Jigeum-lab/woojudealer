@@ -7,6 +7,7 @@ import { Inbox, Loader2, Phone } from "lucide-react";
 import { useRequireAuth } from "@/lib/auth-context";
 import { fetchInquiries, setInquiryStatus } from "@/lib/db/inquiries";
 import {
+  CATEGORY_META,
   INQUIRY_KIND_META,
   INQUIRY_STATUS_META,
   type Inquiry,
@@ -212,6 +213,47 @@ export default function AdminInquiriesPage() {
                     </>
                   )}
                 </div>
+
+                {/* 구성기로 담아 보낸 사양 — 그대로 견적서로 옮기면 된다 */}
+                {q.build && q.build.items.length > 0 && (
+                  <div className="mb-4 overflow-hidden rounded-lg border border-border bg-background">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                      <span className="text-[12px] font-bold text-text-secondary">
+                        고객이 담은 구성 · {q.build.platform === "intel" ? "Intel" : "AMD"}
+                      </span>
+                      <span className="font-mono text-[12px] text-text-muted">
+                        {q.build.items.length}개 품목
+                      </span>
+                    </div>
+                    <ul className="divide-y divide-border/60">
+                      {q.build.items.map((it, i) => (
+                        <li
+                          key={`${it.partNo ?? it.name}-${i}`}
+                          className="flex items-center gap-3 px-4 py-2 text-[12.5px]"
+                        >
+                          <span className="w-[84px] shrink-0 text-text-muted">
+                            {CATEGORY_META[it.category].label}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-foreground">
+                            {it.name}
+                          </span>
+                          {it.qty > 1 && (
+                            <span className="shrink-0 text-text-muted">×{it.qty}</span>
+                          )}
+                          <span className="shrink-0 font-mono text-text-secondary">
+                            {formatWon(it.price * it.qty)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+                      <span className="text-[12.5px] font-bold text-foreground">합계</span>
+                      <span className="font-mono text-[14px] font-bold text-primary">
+                        {formatWon(q.build.total)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {q.note && (
                   <p className="mb-4 rounded-lg border border-border bg-background px-4 py-3 text-[13px] leading-relaxed text-text-secondary">

@@ -54,6 +54,26 @@ export async function fetchAllParts(): Promise<Part[]> {
   return (data as PartRow[]).map(mapPart);
 }
 
+/**
+ * 고객 견적 구성기용 부품 목록.
+ *
+ * parts 테이블은 로그인 사용자 전용이라 비로그인 고객이 읽을 수 없다.
+ * public_parts 뷰는 매입처 링크와 재고를 뺀 공개 컬럼만 노출한다.
+ * 그래서 여기서 돌려주는 Part는 link=null, stock=null이다.
+ */
+export async function fetchPublicParts(): Promise<Part[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("public_parts")
+    .select("id, part_no, category, platform, name, price, sold_out, grade, specs")
+    .order("category")
+    .order("price");
+  if (error) throw error;
+  return (data as Omit<PartRow, "link" | "active" | "inventory">[]).map((row) =>
+    mapPart({ ...row, link: null, active: true, inventory: null })
+  );
+}
+
 export async function fetchPartsByCategory(
   category: PartCategory,
   platform?: PartPlatform

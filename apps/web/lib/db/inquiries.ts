@@ -1,7 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import type { Inquiry, InquiryKind, InquiryStatus } from "@/lib/types";
+import type {
+  Inquiry,
+  InquiryBuild,
+  InquiryKind,
+  InquiryStatus,
+} from "@/lib/types";
 
 interface InquiryRow {
   id: string;
@@ -19,6 +24,7 @@ interface InquiryRow {
   budget_per_unit: number | null;
   note: string | null;
   admin_memo: string | null;
+  build: InquiryBuild | null;
   created_at: string;
 }
 
@@ -39,6 +45,7 @@ function mapInquiry(row: InquiryRow): Inquiry {
     budgetPerUnit: row.budget_per_unit ?? undefined,
     note: row.note ?? undefined,
     adminMemo: row.admin_memo ?? undefined,
+    build: row.build ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -55,6 +62,8 @@ export interface InquiryDraft {
   purpose?: string;
   budgetPerUnit?: number;
   note?: string;
+  /** 구성기로 담은 사양 스냅샷 */
+  build?: InquiryBuild;
 }
 
 /**
@@ -75,6 +84,7 @@ export async function submitInquiry(draft: InquiryDraft): Promise<string> {
     p_purpose: draft.purpose ?? null,
     p_budget_per_unit: draft.budgetPerUnit ?? null,
     p_note: draft.note ?? null,
+    p_build: draft.build ?? null,
   });
   if (error) throw error;
   return data as string;

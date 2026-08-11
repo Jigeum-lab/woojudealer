@@ -263,6 +263,21 @@ export const INQUIRY_STATUS_META: Record<
   closed: { label: "종료", color: "text-text-muted" },
 };
 
+/** 구성기로 담은 사양 스냅샷. 가격은 제출 시점 값을 박아둔다 */
+export interface InquiryBuildItem {
+  category: PartCategory;
+  partNo: number | null;
+  name: string;
+  price: number;
+  qty: number;
+}
+
+export interface InquiryBuild {
+  platform: PartPlatform;
+  items: InquiryBuildItem[];
+  total: number;
+}
+
 export interface Inquiry {
   id: string;
   displayNo: string;
@@ -279,6 +294,7 @@ export interface Inquiry {
   budgetPerUnit?: number;
   note?: string;
   adminMemo?: string;
+  build?: InquiryBuild;
   createdAt: string;
 }
 
