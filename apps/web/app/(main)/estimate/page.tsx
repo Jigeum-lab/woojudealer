@@ -18,7 +18,7 @@ const PATHS = [
     desc: "쓰지 않는 PC가 얼마나 되는지 알려주시면 개략 금액을 회신드립니다. 사양을 모르셔도 됩니다.",
   },
   {
-    href: "/estimate/build",
+    href: "/estimate/pc",
     icon: ShoppingCart,
     eyebrow: "판매",
     title: "재생 PC를 구매하려고 합니다",

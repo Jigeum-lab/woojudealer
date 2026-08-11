@@ -193,6 +193,8 @@ export interface Part {
   specs: Record<string, string | number | null>;
   /** 재고 수량. inventory 조인 결과가 없으면 null (재고 미등록) */
   stock: number | null;
+  /** 부품 사진. 없는 부품이 있어 null 가능 */
+  imageUrl: string | null;
 }
 
 export interface QuoteItem {

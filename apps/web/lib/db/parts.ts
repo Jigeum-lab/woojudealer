@@ -14,6 +14,7 @@ export interface PartRow {
   grade: string | null;
   link: string | null;
   specs: Record<string, string | number | null> | null;
+  image_url: string | null;
   active: boolean;
   /** inventory 조인 결과 — 재고 미등록이면 빈 배열 */
   inventory?: { quantity: number }[] | { quantity: number } | null;
@@ -33,6 +34,7 @@ export function mapPart(row: PartRow): Part {
     link: row.link,
     specs: row.specs ?? {},
     stock: inv ? inv.quantity : null,
+    imageUrl: row.image_url,
   };
 }
 
@@ -65,7 +67,7 @@ export async function fetchPublicParts(): Promise<Part[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("public_parts")
-    .select("id, part_no, category, platform, name, price, sold_out, grade, specs")
+    .select("id, part_no, category, platform, name, price, sold_out, grade, specs, image_url")
     .order("category")
     .order("price");
   if (error) throw error;
