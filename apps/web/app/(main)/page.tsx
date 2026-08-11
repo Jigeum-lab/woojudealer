@@ -1,12 +1,17 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, FlaskConical, Network, TvMinimalPlay } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
+import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-public";
+import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ExplodedDiagram } from "@/components/landing/exploded-diagram";
+import { PartImage } from "@/components/inquiry/part-image";
 import { SiteFooter } from "@/components/site-footer";
 
 /**
@@ -68,6 +73,271 @@ const TRACK_RECORD = [
   { icon: TvMinimalPlay, value: "12,187명", label: "유튜브 구독자", desc: "'우주아빠TV' 영상 1,500개" },
 ];
 
+/**
+ * 랜딩은 성격이 다른 두 손님을 동시에 받는다.
+ *   sell — 폐PC를 처분하려는 기업 담당자 (수거·삭제·증명)
+ *   buy  — 되살린 PC를 사려는 사람 (견적·구성)
+ * 둘은 필요한 근거가 달라서 한 화면에 욱여넣으면 양쪽 다 흐려진다.
+ * 그래서 히어로에서 갈라주고 아래 섹션 전체를 바꾼다.
+ */
+type Mode = "sell" | "buy";
+
+const HERO: Record<
+  Mode,
+  { eyebrow: string; lines: string[]; accent: string; body: string; cta: { href: string; label: string }; note: string; sub: { href: string; label: string }; stats: [string, string][] }
+> = {
+  sell: {
+    eyebrow: "기업 · PC방 · 공공기관 폐PC 원스톱",
+    lines: ["수거하고, 지우고,", "증명하고,"],
+    accent: "다시 팝니다",
+    body: "고물상에 넘기면 대당 5,000원입니다. 우주딜러는 저장장치를 국제표준으로 지우고 인증서를 발급한 뒤, 살아있는 부품으로 값을 되찾아 돌려드립니다.",
+    cta: { href: "", label: "무료 수거 신청" },   // href는 로그인 여부에 따라 정한다
+    note: "수량만 알려주시면 됩니다. 수거 비용 없음.",
+    sub: { href: "/estimate/sell", label: "얼마 받을 수 있는지 먼저 확인하기" },
+    stats: [
+      ["24시간", "내 수거"],
+      ["DoD 5220.22-M", "국제표준 삭제"],
+      ["QR 검증", "누구나 조회"],
+    ],
+  },
+  buy: {
+    eyebrow: "사무용 · PC방 · 공공기관 재생 PC",
+    lines: ["버려진 부품으로", "제대로 된 PC를"],
+    accent: "맞춥니다",
+    body: "수거한 PC에서 살아있는 부품만 골라 검증하고 다시 조립합니다. 부품을 직접 고르면 호환성과 금액이 그 자리에서 나옵니다.",
+    cta: { href: "/estimate/pc", label: "견적 짜보기" },
+    note: "가입 없이 담아보실 수 있습니다.",
+    sub: { href: "/estimate/buy", label: "용도·예산만 남기고 추천받기" },
+    stats: [
+      ["695개", "부품 재고"],
+      ["자동 검증", "호환성 21개 분류"],
+      ["1년", "무상보증"],
+    ],
+  },
+};
+
+/** 히어로 위 전환 토글 */
+function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  return (
+    <div
+      role="tablist"
+      aria-label="찾으시는 것"
+      className="mb-8 inline-flex rounded-full border border-white/25 bg-black/45 p-1 backdrop-blur-sm"
+    >
+      {(
+        [
+          ["sell", "처분합니다"],
+          ["buy", "구매합니다"],
+        ] as [Mode, string][]
+      ).map(([m, label]) => (
+        <button
+          key={m}
+          role="tab"
+          aria-selected={mode === m}
+          onClick={() => onChange(m)}
+          className={`rounded-full px-5 py-2 text-[14px] font-bold transition-colors ${
+            mode === m
+              ? "bg-primary text-primary-foreground"
+              : "text-white/80 hover:text-white"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
+/**
+ * 구매 쪽 본문.
+ *
+ * 파는 쪽이 '증빙'으로 설득한다면 이쪽은 '실물'로 설득한다.
+ * 추천 사양은 관리자가 실제로 쓰는 템플릿을 그대로 읽어온다 — 단가를 고치면
+ * 여기 금액도 따라 바뀐다. 부품 사진도 재고에 등록된 실제 사진이다.
+ */
+function BuySections() {
+  const [templates, setTemplates] = useState<PublicTemplate[]>([]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    fetchPublicTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplates([]))
+      .finally(() => setReady(true));
+  }, []);
+
+  return (
+    <>
+      {/* 추천 사양 */}
+      <section className="border-b border-border bg-background py-16 md:py-24">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 md:px-10">
+          <div className="mb-12 max-w-[660px]">
+            <Eyebrow>추천 사양</Eyebrow>
+            <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
+              고민되시면
+              <br />
+              이 중에 고르셔도 됩니다
+            </h2>
+            <p className="text-[15px] leading-relaxed text-text-secondary">
+              용도별로 미리 맞춰둔 구성입니다. 그대로 요청하셔도 되고, 마음에 안 드는
+              부품만 바꾸셔도 됩니다.
+            </p>
+          </div>
+
+          {!ready ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-64 animate-pulse rounded-xl border border-border bg-card"
+                />
+              ))}
+            </div>
+          ) : templates.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border-strong bg-card p-8 text-center text-sm text-text-muted">
+              추천 사양을 불러오지 못했습니다. 구성기에서 직접 담아보실 수 있습니다.
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              {templates.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex flex-col rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary/40"
+                >
+                  <h3 className="text-[17px] font-bold text-foreground">{t.name}</h3>
+                  <p className="mb-5 mt-1.5 text-[13px] leading-relaxed text-text-secondary">
+                    {t.description}
+                  </p>
+
+                  <ul className="mb-5 flex flex-1 flex-col gap-2">
+                    {t.items.slice(0, 4).map((it, i) => (
+                      <li key={i} className="flex items-center gap-2.5">
+                        <PartImage
+                          src={it.imageUrl}
+                          alt={it.name}
+                          category={it.category}
+                          size={32}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary">
+                          {it.name}
+                        </span>
+                      </li>
+                    ))}
+                    {t.items.length > 4 && (
+                      <li className="pl-[42px] text-[12px] text-text-muted">
+                        외 {t.items.length - 4}개 품목
+                      </li>
+                    )}
+                  </ul>
+
+                  <div className="border-t border-border pt-4">
+                    <div className="mb-3 flex items-baseline justify-between">
+                      <span className="text-[12.5px] text-text-muted">합계 (VAT 별도)</span>
+                      <span className="font-mono text-[19px] font-extrabold text-primary">
+                        {formatWon(t.total)}
+                      </span>
+                    </div>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href="/estimate/pc">이 사양으로 시작하기</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 왜 믿을 수 있나 */}
+      <section className="bg-card py-16 md:py-24">
+        <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <div>
+            <Eyebrow>왜 싼가</Eyebrow>
+            <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
+              부품값이 이미
+              <br />
+              한 번 회수됐기 때문입니다
+            </h2>
+            <p className="mb-7 text-[15px] leading-relaxed text-text-secondary">
+              기업에서 수거한 PC에서 동작하는 부품만 골라냅니다. 새로 사올 필요가 없으니
+              그만큼 값이 내려갑니다. 싸게 파는 게 아니라 원가가 다른 것입니다.
+            </p>
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border pt-6">
+              {[
+                ["동작 검증", "부품마다 확인 후 등록"],
+                ["호환성 자동 검사", "조립 안 되는 구성은 발행 차단"],
+                ["1년 무상보증", "제품 납기 후 (일부품목 제외)"],
+                ["21개 분류", "695개 부품에서 구성"],
+              ].map(([t, d]) => (
+                <div key={t}>
+                  <dt className="text-[14px] font-bold text-foreground">{t}</dt>
+                  <dd className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{d}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* 호환성 판정 — 구성기가 실제로 내보내는 문구 */}
+          <div className="rounded-xl border border-border bg-background">
+            <div className="border-b border-border px-5 py-3.5">
+              <span className="font-mono text-[12px] tracking-wide text-text-muted">
+                호환성 검증
+              </span>
+            </div>
+            <ul className="divide-y divide-border/60">
+              {[
+                {
+                  ok: false,
+                  head: "마더보드가 지원하지 않는 메모리 규격입니다",
+                  body: "마더보드는 DDR5만 지원하는데 선택한 메모리는 DDR4 입니다.",
+                },
+                {
+                  ok: false,
+                  head: "그래픽카드가 케이스에 들어가지 않습니다",
+                  body: "그래픽카드 길이 330mm > 케이스 허용 250mm (80mm 초과)",
+                },
+                {
+                  ok: true,
+                  head: "CPU쿨러 장착 가능",
+                  body: "쿨러 높이 157mm ≤ 케이스 허용 160mm",
+                },
+              ].map((c) => (
+                <li key={c.head} className="flex gap-3 px-5 py-4">
+                  <span
+                    className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${
+                      c.ok ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
+                    }`}
+                  >
+                    {c.ok ? "✓" : "✕"}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className={`text-[13px] font-semibold ${
+                        c.ok ? "text-primary" : "text-destructive"
+                      }`}
+                    >
+                      {c.head}
+                    </p>
+                    <p className="mt-1 font-mono text-[12px] leading-relaxed text-text-secondary">
+                      {c.body}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-border px-5 py-3.5">
+              <p className="text-[12px] text-text-muted">
+                부품 호환성 자동 매칭 특허출원 4-2023-071209-7
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
 /** 섹션 라벨 — 무채색으로 둔다. 초록은 금액과 CTA 몫이다 */
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -78,9 +348,19 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function LandingPage() {
+function LandingInner() {
   const { user } = useAuth();
+  const params = useSearchParams();
   const requestHref = user ? "/requests/new" : "/login?return_to=%2Frequests%2Fnew";
+
+  // ?mode=buy 로 들어오면 구매 쪽부터 보여준다 — 링크로 바로 보낼 수 있게
+  const [mode, setMode] = useState<Mode>("sell");
+  useEffect(() => {
+    if (params.get("mode") === "buy") setMode("buy");
+  }, [params]);
+
+  const hero = HERO[mode];
+  const heroCtaHref = mode === "sell" ? requestHref : hero.cta.href;
 
   return (
     <>
@@ -104,15 +384,21 @@ export default function LandingPage() {
           className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-transparent to-background"
         />
 
-        <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-24 text-center sm:px-6 md:py-32">
+        <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-20 text-center sm:px-6 md:py-28">
+          <ModeToggle mode={mode} onChange={setMode} />
+
           <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
-            기업 · PC방 · 공공기관 폐PC 원스톱
+            {hero.eyebrow}
           </p>
 
           <h1 className="mb-6 text-[34px] font-black leading-[1.14] tracking-[-0.03em] text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.65)] sm:text-[46px] md:text-[58px]">
-            수거하고, 지우고,
-            <br />
-            증명하고,{" "}
+            {/* 마지막 줄만 강조구와 한 줄에 둔다 — 줄바꿈이 늘면 히어로가 늘어진다 */}
+            {hero.lines.slice(0, -1).map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+            {hero.lines[hero.lines.length - 1]}{" "}
             <span
               className="text-primary"
               style={{
@@ -120,41 +406,31 @@ export default function LandingPage() {
                 textShadow: "0 0 44px rgba(0,213,99,0.45)",
               }}
             >
-              다시 팝니다
+              {hero.accent}
             </span>
           </h1>
 
           {/* 사진 위 본문이라 기본 본문색보다 밝게 — 대비 확보 */}
           <p className="mb-9 max-w-[560px] text-[17px] leading-relaxed text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">
-            고물상에 넘기면 대당 5,000원입니다. 우주딜러는 저장장치를 국제표준으로
-            지우고 인증서를 발급한 뒤, 살아있는 부품으로 값을 되찾아 돌려드립니다.
+            {hero.body}
           </p>
 
           <Button asChild variant="cta" size="lg">
-            <Link href={requestHref}>
-              무료 수거 신청 <ArrowRight className="size-5" />
+            <Link href={heroCtaHref}>
+              {hero.cta.label} <ArrowRight className="size-5" />
             </Link>
           </Button>
-          <p className="mt-3 text-[13px] text-text-muted">
-            수량만 알려주시면 됩니다. 수거 비용 없음.
-          </p>
-          {/* 아직 맡길지 안 정한 사람에게 주는 앞단 경로 */}
+          <p className="mt-3 text-[13px] text-text-muted">{hero.note}</p>
           <Link
-            href="/estimate/sell"
+            href={hero.sub.href}
             className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
           >
-            얼마 받을 수 있는지 먼저 확인하기
+            {hero.sub.label}
             <ArrowRight className="size-3.5" />
           </Link>
 
           <dl className="mt-12 flex flex-wrap justify-center gap-x-10 gap-y-4 border-t border-border/60 pt-7">
-            {/* 헤드라인의 세 동사(수거·삭제·증명)를 그대로 받는다.
-                업력·협력점 같은 신뢰 지표는 아래 실적 섹션 몫이다 */}
-            {[
-              ["24시간", "내 수거"],
-              ["DoD 5220.22-M", "국제표준 삭제"],
-              ["QR 검증", "누구나 조회"],
-            ].map(([v, l]) => (
+            {hero.stats.map(([v, l]) => (
               <div key={l}>
                 <dt className="font-mono text-[15px] font-semibold text-foreground">{v}</dt>
                 <dd className="mt-0.5 text-[13px] text-text-muted">{l}</dd>
@@ -164,6 +440,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {mode === "sell" ? (
+        <>
       {/* ───────────────── 분해도 ───────────────── */}
       <section className="border-b border-border bg-background py-16 md:py-24">
         <div className="mx-auto grid max-w-[1240px] gap-12 px-4 sm:px-6 md:px-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
@@ -335,6 +613,11 @@ export default function LandingPage() {
         </div>
       </section>
 
+        </>
+      ) : (
+        <BuySections />
+      )}
+
       {/* ───────────────── CTA ───────────────── */}
       <section className="relative overflow-hidden border-t border-border bg-background py-16 text-center md:py-24">
         <div
@@ -343,19 +626,24 @@ export default function LandingPage() {
         />
         <div className="relative mx-auto max-w-[720px] px-4 sm:px-6">
           <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[40px]">
-            수량만 알려주세요
+            {mode === "sell" ? "수량만 알려주세요" : "먼저 담아만 보셔도 됩니다"}
           </h2>
           <p className="mb-9 text-[16px] leading-relaxed text-text-secondary">
-            가까운 협력점이 방문합니다. 수거 비용은 받지 않습니다.
+            {mode === "sell"
+              ? "가까운 협력점이 방문합니다. 수거 비용은 받지 않습니다."
+              : "가입도 결제도 없습니다. 구성해두시면 저희가 확인해 정식 견적서를 보내드립니다."}
           </p>
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild variant="cta" size="lg">
-              <Link href={requestHref}>
-                무료 수거 신청 <ArrowRight className="size-5" />
+              <Link href={mode === "sell" ? requestHref : "/estimate/pc"}>
+                {mode === "sell" ? "무료 수거 신청" : "견적 짜보기"}
+                <ArrowRight className="size-5" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/estimate">견적부터 받아보기</Link>
+              <Link href={mode === "sell" ? "/estimate" : "/support"}>
+                {mode === "sell" ? "견적부터 받아보기" : "자주 묻는 질문"}
+              </Link>
             </Button>
           </div>
         </div>
@@ -363,5 +651,14 @@ export default function LandingPage() {
 
       <SiteFooter />
     </>
+  );
+}
+
+export default function LandingPage() {
+  // useSearchParams를 쓰므로 Suspense 경계가 필요하다
+  return (
+    <Suspense fallback={null}>
+      <LandingInner />
+    </Suspense>
   );
 }
