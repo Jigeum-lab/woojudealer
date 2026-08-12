@@ -13,6 +13,8 @@ import {
   LogOut,
   Menu,
   Plus,
+  Recycle,
+  ShoppingCart,
   User,
   Wallet,
 } from "lucide-react";
@@ -81,8 +83,13 @@ interface NavItem {
   icon: typeof Plus;
 }
 
-/** 처분/구매 전환. 헤더에 늘 떠 있어 어느 페이지에서도 바꿀 수 있다 */
-function ModeToggle({
+/**
+ * 모드 전환 링크. 헤더 오른쪽 끝에 늘 떠 있다.
+ *
+ * 플랫폼의 기본은 구매다. 그래서 평소에는 "처분하기"만 보이고,
+ * 처분 쪽에 들어가 있을 때만 "구매하기"로 바뀌어 돌아올 길이 된다.
+ */
+function ModeSwitch({
   mode,
   onChange,
   className,
@@ -91,38 +98,28 @@ function ModeToggle({
   onChange: (m: SiteMode) => void;
   className?: string;
 }) {
+  const next: SiteMode = mode === "buy" ? "sell" : "buy";
   return (
-    <div
-      role="tablist"
-      aria-label="찾으시는 것"
+    <button
+      type="button"
+      onClick={() => onChange(next)}
       className={cn(
-        "inline-flex shrink-0 rounded-full border border-border bg-secondary p-0.5",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:border-primary hover:text-primary",
         className
       )}
     >
-      {(
-        [
-          ["sell", "처분"],
-          ["buy", "구매"],
-        ] as [SiteMode, string][]
-      ).map(([m, label]) => (
-        <button
-          key={m}
-          type="button"
-          role="tab"
-          aria-selected={mode === m}
-          onClick={() => onChange(m)}
-          className={cn(
-            "rounded-full px-3 py-1 text-[13px] font-bold transition-colors",
-            mode === m
-              ? "bg-primary text-primary-foreground"
-              : "text-text-secondary hover:text-foreground"
-          )}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+      {next === "sell" ? (
+        <>
+          <Recycle className="size-3.5" />
+          처분하기
+        </>
+      ) : (
+        <>
+          <ShoppingCart className="size-3.5" />
+          구매하기
+        </>
+      )}
+    </button>
   );
 }
 
@@ -158,20 +155,17 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 md:px-10">
 
-        {/* Logo + 전환 */}
-        <div className="flex shrink-0 items-center gap-4">
-          <Link href="/" className="flex shrink-0 items-center">
-            <Image
-              src="/wooju/logo.svg"
-              alt="우주딜러"
-              width={74}
-              height={28}
-              priority
-              className="h-6 w-auto"
-            />
-          </Link>
-          <ModeToggle mode={mode} onChange={handleMode} />
-        </div>
+        {/* Logo */}
+        <Link href="/" className="flex shrink-0 items-center">
+          <Image
+            src="/wooju/logo.svg"
+            alt="우주딜러"
+            width={74}
+            height={28}
+            priority
+            className="h-6 w-auto"
+          />
+        </Link>
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 md:flex">
@@ -200,7 +194,8 @@ export function SiteHeader() {
         </nav>
 
         {/* Desktop right */}
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
+          <ModeSwitch mode={mode} onChange={handleMode} />
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -243,6 +238,11 @@ export function SiteHeader() {
               <Link href="/login">로그인</Link>
             </Button>
           )}
+        </div>
+
+        {/* Mobile: 전환 링크 + 햄버거 */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ModeSwitch mode={mode} onChange={handleMode} />
         </div>
 
         {/* Mobile hamburger */}

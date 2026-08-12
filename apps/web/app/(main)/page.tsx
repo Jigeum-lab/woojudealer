@@ -11,7 +11,7 @@ import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-pu
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ExplodedDiagram } from "@/components/landing/exploded-diagram";
-import { PartMosaic } from "@/components/landing/part-mosaic";
+import { PartStrip } from "@/components/landing/part-strip";
 import { PartImage } from "@/components/inquiry/part-image";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -353,10 +353,18 @@ export default function LandingPage() {
             />
           </>
         ) : (
-          <PartMosaic />
+          <>
+            {/* 구매 쪽은 배경을 비운다. 부품 타일로 덮으면 지저분하고 글자가 죽는다.
+                제품은 히어로 하단 띠와 아래 추천 사양 카드가 보여준다. */}
+            <div
+              aria-hidden
+              className="absolute left-1/2 top-1/3 -z-10 size-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[130px]"
+            />
+            <PartStrip />
+          </>
         )}
 
-        <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-20 text-center sm:px-6 md:py-28">
+        <div className={`relative mx-auto flex max-w-[860px] flex-col items-center px-4 pt-20 text-center sm:px-6 md:pt-28 ${mode === "buy" ? "pb-40 md:pb-44" : "pb-20 md:pb-28"}`}>
           <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
             {hero.eyebrow}
           </p>
