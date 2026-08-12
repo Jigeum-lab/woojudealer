@@ -11,6 +11,7 @@ import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-pu
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ExplodedDiagram } from "@/components/landing/exploded-diagram";
+import { PartMosaic } from "@/components/landing/part-mosaic";
 import { PartImage } from "@/components/inquiry/part-image";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -171,7 +172,7 @@ function BuySections() {
               {templates.map((t) => (
                 <div
                   key={t.id}
-                  className="flex flex-col rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary/40"
+                  className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary/40"
                 >
                   <h3 className="text-[17px] font-bold text-foreground">{t.name}</h3>
                   <p className="mb-5 mt-1.5 text-[13px] leading-relaxed text-text-secondary">
@@ -330,23 +331,30 @@ export default function LandingPage() {
     <>
       {/* ───────────────── 히어로 ───────────────── */}
       <section className="relative isolate overflow-hidden border-b border-border">
-        {/* 배경 사진 — 우주딜러 기존 사이트에서 쓰던 이미지.
-            LCP라 priority로 먼저 받고, 오버레이는 글자 대비를 위해 짙게 깐다. */}
-        <Image
-          src="/wooju/landing/hero-bg.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="-z-10 object-cover object-center"
-        />
-        {/* 사진이 보일 만큼만 덮는다. 위는 헤더와 이어지게, 아래는 다음 섹션으로
-            자연스럽게 떨어지게 어둡히고, 가운데는 열어 둔다. */}
-        <div aria-hidden className="absolute inset-0 -z-10 bg-background/45" />
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-transparent to-background"
-        />
+        {/* 배경은 모드마다 다르다 — 둘이 같은 사진을 쓰면 화면이 구분되지 않는다.
+            처분은 현장 사진, 구매는 실제 재고 부품을 깐 진열대. */}
+        {mode === "sell" ? (
+          <>
+            {/* LCP라 priority로 먼저 받는다 */}
+            <Image
+              src="/wooju/landing/hero-bg.jpg"
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="-z-10 object-cover object-center"
+            />
+            {/* 사진이 보일 만큼만 덮는다. 위는 헤더와 이어지게, 아래는 다음 섹션으로
+                자연스럽게 떨어지게 어둡히고, 가운데는 열어 둔다. */}
+            <div aria-hidden className="absolute inset-0 -z-10 bg-background/45" />
+            <div
+              aria-hidden
+              className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-transparent to-background"
+            />
+          </>
+        ) : (
+          <PartMosaic />
+        )}
 
         <div className="relative mx-auto flex max-w-[860px] flex-col items-center px-4 py-20 text-center sm:px-6 md:py-28">
           <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
