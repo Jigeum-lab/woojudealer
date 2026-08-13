@@ -230,11 +230,15 @@ export const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; color: stri
   canceled: { label: "취소",     color: "text-red-400" },
 };
 
-/** 견적 유효기간·납기 등 엑셀 출력폼의 고정 문구 */
+/**
+ * 견적 유효기간·납기 등 엑셀 출력폼의 고정 문구.
+ *
+ * A/S 문구(1년 무상보증)는 뺐다 — 엑셀에 있던 값이지만 실제 정책이 아니라고
+ * 확인받았다. 실제 조건이 정해지면 그때 다시 넣는다.
+ */
 export const QUOTE_TERMS = {
   validity: "발행일로부터 1일간",
   delivery: "결제후 72시간(토/일요일, 공휴일 제외)",
-  warranty: "제품 납기 후 1년 무상보증(일부품목 제외)",
 } as const;
 
 export const VAT_RATE = 0.1;

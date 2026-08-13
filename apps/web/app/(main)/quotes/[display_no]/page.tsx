@@ -144,7 +144,6 @@ export default function QuoteDocumentPage({
                 <Row label="납기조건" value={QUOTE_TERMS.delivery} />
               </>
             )}
-            <Row label="A/S" value={QUOTE_TERMS.warranty} />
           </dl>
 
           {/* 우: 공급자 */}
