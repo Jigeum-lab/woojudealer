@@ -3,7 +3,20 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Building2, FlaskConical, Network, TvMinimalPlay } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  ChevronRight,
+  ClipboardList,
+  Cpu,
+  FlaskConical,
+  HelpCircle,
+  ListChecks,
+  Network,
+  Truck,
+  TvMinimalPlay,
+  Wallet,
+} from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 import { useMode } from "@/lib/mode-context";
@@ -11,7 +24,6 @@ import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-pu
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ExplodedDiagram } from "@/components/landing/exploded-diagram";
-import { PartStrip } from "@/components/landing/part-strip";
 import { PartImage } from "@/components/inquiry/part-image";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -85,16 +97,13 @@ type Mode = "sell" | "buy";
 
 const HERO: Record<
   Mode,
-  { eyebrow: string; lines: string[]; accent: string; body: string; cta: { href: string; label: string }; note: string; sub: { href: string; label: string }; stats: [string, string][] }
+  { eyebrow: string; lines: string[]; accent: string; body: string; stats: [string, string][] }
 > = {
   sell: {
     eyebrow: "기업 · PC방 · 공공기관 폐PC 원스톱",
     lines: ["수거하고, 지우고,", "증명하고,"],
     accent: "다시 팝니다",
     body: "고물상에 넘기면 대당 5,000원입니다. 우주딜러는 저장장치를 국제표준으로 지우고 인증서를 발급한 뒤, 살아있는 부품으로 값을 되찾아 돌려드립니다.",
-    cta: { href: "", label: "무료 수거 신청" },   // href는 로그인 여부에 따라 정한다
-    note: "수량만 알려주시면 됩니다. 수거 비용 없음.",
-    sub: { href: "/estimate/sell", label: "얼마 받을 수 있는지 먼저 확인하기" },
     stats: [
       ["24시간", "내 수거"],
       ["DoD 5220.22-M", "국제표준 삭제"],
@@ -106,9 +115,6 @@ const HERO: Record<
     lines: ["버려진 부품으로", "제대로 된 PC를"],
     accent: "맞춥니다",
     body: "수거한 PC에서 살아있는 부품만 골라 검증하고 다시 조립합니다. 부품을 직접 고르면 호환성과 금액이 그 자리에서 나옵니다.",
-    cta: { href: "/estimate/pc", label: "견적 짜보기" },
-    note: "가입 없이 담아보실 수 있습니다.",
-    sub: { href: "/estimate/buy", label: "용도·예산만 남기고 추천받기" },
     stats: [
       ["695개", "부품 재고"],
       ["자동 검증", "호환성 21개 분류"],
@@ -325,17 +331,13 @@ export default function LandingPage() {
   const { mode } = useMode();
 
   const hero = HERO[mode];
-  const heroCtaHref = mode === "sell" ? requestHref : hero.cta.href;
 
   return (
     <>
-      {/* ───────────────── 히어로 ───────────────── */}
+      {/* ───────────────── 인트로 (짧게) ───────────────── */}
       <section className="relative isolate overflow-hidden border-b border-border">
-        {/* 배경은 모드마다 다르다 — 둘이 같은 사진을 쓰면 화면이 구분되지 않는다.
-            처분은 현장 사진, 구매는 실제 재고 부품을 깐 진열대. */}
         {mode === "sell" ? (
           <>
-            {/* LCP라 priority로 먼저 받는다 */}
             <Image
               src="/wooju/landing/hero-bg.jpg"
               alt=""
@@ -344,77 +346,119 @@ export default function LandingPage() {
               sizes="100vw"
               className="-z-10 object-cover object-center"
             />
-            {/* 사진이 보일 만큼만 덮는다. 위는 헤더와 이어지게, 아래는 다음 섹션으로
-                자연스럽게 떨어지게 어둡히고, 가운데는 열어 둔다. */}
-            <div aria-hidden className="absolute inset-0 -z-10 bg-background/45" />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-background/55" />
             <div
               aria-hidden
-              className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-transparent to-background"
+              className="absolute inset-0 -z-10 bg-gradient-to-b from-background/80 via-transparent to-background"
             />
           </>
         ) : (
-          <>
-            {/* 구매 쪽은 배경을 비운다. 부품 타일로 덮으면 지저분하고 글자가 죽는다.
-                제품은 히어로 하단 띠와 아래 추천 사양 카드가 보여준다. */}
-            <div
-              aria-hidden
-              className="absolute left-1/2 top-1/3 -z-10 size-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[130px]"
-            />
-            <PartStrip />
-          </>
+          <div
+            aria-hidden
+            className="absolute left-1/2 top-0 -z-10 size-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[130px]"
+          />
         )}
 
-        <div className={`relative mx-auto flex max-w-[860px] flex-col items-center px-4 pt-20 text-center sm:px-6 md:pt-28 ${mode === "buy" ? "pb-40 md:pb-44" : "pb-20 md:pb-28"}`}>
-          <p className="mb-6 font-mono text-[12px] uppercase tracking-[0.18em] text-white/75 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)]">
+        {/* 소개는 짧게 끝낸다 — 첫 화면은 '뭘 할 수 있나'가 차지해야 한다 */}
+        <div className="relative mx-auto w-full max-w-[1280px] px-4 py-10 sm:px-6 md:px-10 md:py-14">
+          <p className="mb-3 font-mono text-[12px] uppercase tracking-[0.18em] text-white/70">
             {hero.eyebrow}
           </p>
-
-          <h1 className="mb-6 text-[34px] font-black leading-[1.14] tracking-[-0.03em] text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.65)] sm:text-[46px] md:text-[58px]">
-            {/* 마지막 줄만 강조구와 한 줄에 둔다 — 줄바꿈이 늘면 히어로가 늘어진다 */}
-            {hero.lines.slice(0, -1).map((line) => (
-              <span key={line} className="block">
-                {line}
-              </span>
-            ))}
-            {hero.lines[hero.lines.length - 1]}{" "}
-            <span
-              className="text-primary"
-              style={{
-                fontFamily: "var(--font-display)",
-                textShadow: "0 0 44px rgba(0,213,99,0.45)",
-              }}
-            >
+          <h1 className="mb-3 text-[26px] font-black leading-[1.2] tracking-[-0.02em] text-white sm:text-[32px] md:text-[38px]">
+            {hero.lines.join(" ")}{" "}
+            <span className="text-primary" style={{ fontFamily: "var(--font-display)" }}>
               {hero.accent}
             </span>
           </h1>
-
-          {/* 사진 위 본문이라 기본 본문색보다 밝게 — 대비 확보 */}
-          <p className="mb-9 max-w-[560px] text-[17px] leading-relaxed text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">
+          <p className="max-w-[600px] text-[15px] leading-relaxed text-white/85">
             {hero.body}
           </p>
 
-          <Button asChild variant="cta" size="lg">
-            <Link href={heroCtaHref}>
-              {hero.cta.label} <ArrowRight className="size-5" />
-            </Link>
-          </Button>
-          <p className="mt-3 text-[13px] text-text-muted">{hero.note}</p>
-          <Link
-            href={hero.sub.href}
-            className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
-          >
-            {hero.sub.label}
-            <ArrowRight className="size-3.5" />
-          </Link>
-
-          <dl className="mt-12 flex flex-wrap justify-center gap-x-10 gap-y-4 border-t border-border/60 pt-7">
+          <dl className="mt-7 flex flex-wrap gap-x-8 gap-y-3">
             {hero.stats.map(([v, l]) => (
-              <div key={l}>
-                <dt className="font-mono text-[15px] font-semibold text-foreground">{v}</dt>
-                <dd className="mt-0.5 text-[13px] text-text-muted">{l}</dd>
+              <div key={l} className="flex items-baseline gap-1.5">
+                <dt className="font-mono text-[14px] font-semibold text-foreground">{v}</dt>
+                <dd className="text-[12.5px] text-text-muted">{l}</dd>
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* ───────────────── 바로 할 수 있는 것 ───────────────── */}
+      <section className="border-b border-border bg-background py-10 md:py-14">
+        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10">
+          <h2 className="mb-5 text-[20px] font-bold text-foreground md:text-[22px]">
+            {mode === "buy" ? "PC가 필요하시면" : "폐PC 처분이 필요하실 때"}
+          </h2>
+
+          {/* 주 행동 하나를 크게 — 나머지는 아래 작은 카드로 */}
+          <Link
+            href={mode === "buy" ? "/estimate/pc" : requestHref}
+            className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50 md:gap-5 md:p-6"
+          >
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-green-soft text-primary md:size-14">
+              {mode === "buy" ? <Cpu className="size-6" /> : <Truck className="size-6" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-bold text-foreground md:text-[18px]">
+                {mode === "buy" ? "부품 직접 골라 견적" : "수거 신청하기"}
+              </span>
+              <span className="mt-1 block text-[13px] leading-relaxed text-text-secondary md:text-[13.5px]">
+                {mode === "buy"
+                  ? "호환성과 금액이 그 자리에서 계산됩니다. 가입 없이 담아보셔도 됩니다."
+                  : "수량만 알려주시면 협력점이 방문합니다. 수거 비용은 받지 않습니다."}
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-text-muted transition-colors group-hover:text-primary" />
+          </Link>
+
+          {mode === "buy" && (
+            <div className="mt-3 rounded-xl border border-border bg-card p-5 md:p-6">
+              <p className="mb-4 text-[14px] font-bold text-text-secondary">
+                고르기 어려우시면 추천 사양으로
+              </p>
+              <div className="grid gap-2.5 sm:grid-cols-3">
+                {["가성비형", "중급형", "고급형"].map((n) => (
+                  <Link
+                    key={n}
+                    href="/estimate/pc"
+                    className="flex items-center justify-between rounded-lg border border-border bg-background px-4 py-3 text-[14px] font-semibold text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                  >
+                    {n}
+                    <ChevronRight className="size-4 text-text-muted" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 보조 행동 */}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {(mode === "buy"
+              ? [
+                  { href: "/estimate/buy", icon: ListChecks, label: "용도·예산만 남기기", desc: "저희가 구성해 견적서를 보내드립니다" },
+                  { href: "/support", icon: HelpCircle, label: "자주 묻는 질문", desc: "결제·납기가 궁금하시면" },
+                ]
+              : [
+                  { href: "/estimate/sell", icon: Wallet, label: "얼마 받는지 먼저 확인", desc: "가입 없이 수량만 알려주셔도 됩니다" },
+                  { href: "/requests", icon: ClipboardList, label: "내 신청 현황", desc: "진행 단계·인증서·정산 보기" },
+                ]
+            ).map((a) => (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="group flex items-center gap-3.5 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:border-primary/50"
+              >
+                <a.icon className="size-5 shrink-0 text-text-muted transition-colors group-hover:text-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14.5px] font-semibold text-foreground">{a.label}</span>
+                  <span className="mt-0.5 block truncate text-[12.5px] text-text-muted">{a.desc}</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-text-muted transition-colors group-hover:text-primary" />
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
