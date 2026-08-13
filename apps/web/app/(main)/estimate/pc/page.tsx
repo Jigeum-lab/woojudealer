@@ -461,7 +461,7 @@ export default function BuildEstimatePage() {
           </div>
 
           {/* 요약 */}
-          <div className="flex w-full shrink-0 flex-col gap-4 lg:sticky lg:top-24 lg:w-[380px]">
+          <div className="flex w-full shrink-0 flex-col gap-4 lg:sticky lg:top-[128px] lg:w-[380px]">
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[13px] font-bold text-text-secondary">

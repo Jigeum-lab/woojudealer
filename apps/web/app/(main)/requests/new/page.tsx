@@ -277,7 +277,7 @@ export default function NewRequestPage() {
           </div>
 
           {/* Summary sidebar */}
-          <div className="sticky top-[88px] overflow-hidden rounded-xl border border-border bg-card">
+          <div className="sticky top-[128px] overflow-hidden rounded-xl border border-border bg-card">
             <div className="border-b border-border bg-secondary px-5 py-4">
               <div className="text-sm font-bold text-foreground">신청 요약</div>
             </div>
