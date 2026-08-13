@@ -306,6 +306,8 @@ export const ISSUER = {
   brand: "우주딜러",
   bizNo: "212-86-16434",
   corpNo: "230111-0398593",
+  /** 전자상거래법상 표시 의무 — woojudealer.com 푸터 표기 그대로 */
+  mailOrderNo: "제 2023-울산 울주-0567 호",
   ceo: "우정현",
   founded: "2023.09.21",
   address: "울산광역시 울주군 웅촌면 곡천동문길 32, 4-10호",

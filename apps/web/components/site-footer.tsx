@@ -12,7 +12,7 @@ export function SiteFooter() {
           </div>
           <div className="leading-relaxed">
             대표 {ISSUER.ceo} &nbsp;|&nbsp; 사업자등록번호 {ISSUER.bizNo} &nbsp;|&nbsp;{" "}
-            {ISSUER.email}
+            통신판매업신고 {ISSUER.mailOrderNo} &nbsp;|&nbsp; {ISSUER.email}
             <br />
             {ISSUER.address}
           </div>
