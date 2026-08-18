@@ -69,12 +69,19 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 고객 호스트: 어드민 호스트가 준비됐으면 운영 경로를 그쪽으로 넘긴다.
-  // 준비 전(ADMIN_HOST 미설정)에는 지금처럼 /admin으로 계속 쓴다.
+  // 고객 호스트: 어드민 호스트가 준비됐으면 운영 경로는 없는 것으로 취급한다.
+  //
+  // 어드민 호스트로 리다이렉트하지 않는 것은 의도적이다 — 리다이렉트는 "여기
+  // 관리자 화면이 있다"를 알려주는 셈이라, 운영 주소를 아직 모르는 쪽에 힌트를
+  // 준다. 404로 덮으면 존재 자체가 드러나지 않는다. 권한 차단은 어차피 서버
+  // 레이아웃과 RLS가 하므로, 이건 노출 표면을 줄이는 것이지 방어선이 아니다.
+  //
+  // 준비 전(ADMIN_HOST 미설정)에는 지금처럼 고객 호스트의 /admin으로 계속 쓴다.
   if (ADMIN_HOST && !onAdminHost && startsWithAny(pathname, ["/admin", "/quotes"])) {
-    return NextResponse.redirect(
-      new URL(`https://${ADMIN_HOST}${pathname}${search}`)
-    );
+    const url = request.nextUrl.clone();
+    url.pathname = "/_not-found";
+    url.search = "";
+    return NextResponse.rewrite(url, { status: 404 });
   }
 
   const effectivePath = rewriteTo ?? pathname;
