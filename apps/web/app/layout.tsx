@@ -25,11 +25,17 @@ export const metadata: Metadata = {
     description:
       "B2B 폐PC 수거 → 보안삭제(DoD 5220.22-M) → 인증서 원스톱 플랫폼",
     siteName: "우주딜러",
-    images: [{ url: "/wooju/og.png", width: 720, height: 720 }],
+    images: [{ url: "/wooju/og.png", width: 1200, height: 630 }],
     locale: "ko_KR",
     type: "website",
   },
-  icons: { icon: "/wooju/logo.svg" },
+  twitter: {
+    card: "summary_large_image",
+    title: "우주딜러",
+    description:
+      "B2B 폐PC 수거 → 보안삭제(DoD 5220.22-M) → 인증서 원스톱 플랫폼",
+    images: ["/wooju/og.png"],
+  },
 };
 
 export default function RootLayout({
