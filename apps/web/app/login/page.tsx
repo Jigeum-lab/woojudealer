@@ -59,6 +59,10 @@ function LoginInner() {
     try {
       await signIn(email, password);
       toast.success("로그인되었습니다");
+      // 세션 쿠키는 브라우저 클라이언트가 방금 심었지만, 라우터가 들고 있는
+      // RSC 캐시는 아직 '비로그인' 상태의 응답이다. refresh 없이 이동하면
+      // 서버 레이아웃이 옛 상태로 그려져 로그인이 안 된 것처럼 보인다.
+      router.refresh();
       router.push(returnTo);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "로그인 실패";
@@ -103,7 +107,15 @@ function LoginInner() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">비밀번호</Label>
+            <div className="flex items-baseline justify-between">
+              <Label htmlFor="password">비밀번호</Label>
+              <Link
+                href="/forgot-password"
+                className="text-[12.5px] text-text-muted hover:text-primary hover:underline"
+              >
+                비밀번호를 잊으셨나요?
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id="password"
