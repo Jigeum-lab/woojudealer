@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -20,7 +20,11 @@ import {
 
 import { useAuth } from "@/lib/auth-context";
 import { useMode } from "@/lib/mode-context";
-import { fetchPublicTemplates, type PublicTemplate } from "@/lib/db/templates-public";
+import {
+  discountRate,
+  fetchPublicTemplates,
+  type PublicTemplate,
+} from "@/lib/db/templates-public";
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ExplodedDiagram } from "@/components/landing/exploded-diagram";
@@ -131,9 +135,101 @@ const HERO: Record<
  * 추천 사양은 관리자가 실제로 쓰는 템플릿을 그대로 읽어온다 — 단가를 고치면
  * 여기 금액도 따라 바뀐다. 부품 사진도 재고에 등록된 실제 사진이다.
  */
+/** 카드에 크게 보여줄 세 줄. 컴퓨존식으로 CPU·RAM·VGA만 뽑는다. */
+const SPEC_ROWS = [
+  { category: "cpu", label: "CPU" },
+  { category: "memory", label: "RAM" },
+  { category: "gpu", label: "VGA" },
+] as const;
+
+/** 대표 사진은 그래픽카드 > CPU > 케이스 순으로 고른다 — 가장 눈에 띄는 부품부터. */
+const THUMB_ORDER = ["gpu", "cpu", "case"] as const;
+
+/**
+ * 추천 사양 카드 한 장.
+ *
+ * 정가(list_price)를 매긴 부품이 하나도 없으면 할인 표기가 통째로 빠진다.
+ * 정가 없이 할인율만 그리면 없는 할인을 있는 것처럼 보이게 되기 때문이다.
+ */
+function TemplateCard({ template: t }: { template: PublicTemplate }) {
+  const rate = discountRate(t.total, t.listTotal);
+  const thumb =
+    THUMB_ORDER.map((c) => t.items.find((it) => it.category === c)).find(
+      (it) => it?.imageUrl
+    ) ?? t.items[0];
+
+  return (
+    <div className="flex flex-col gap-5 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/40 md:flex-row md:items-center md:gap-6 md:p-6">
+      {/* 대표 사진 */}
+      <div className="flex shrink-0 items-center justify-center self-start rounded-lg bg-secondary p-3 md:self-center">
+        <PartImage
+          src={thumb?.imageUrl ?? null}
+          alt={t.name}
+          category={thumb?.category ?? "case"}
+          size={96}
+        />
+      </div>
+
+      {/* 이름 + 사양 표 */}
+      <div className="min-w-0 flex-1">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h3 className="text-[17px] font-bold text-foreground">{t.name}</h3>
+          {t.tag && (
+            <span className="rounded border border-border px-1.5 py-0.5 text-[11px] font-semibold text-text-muted">
+              {t.tag}
+            </span>
+          )}
+        </div>
+
+        <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+          {SPEC_ROWS.map(({ category, label }) => {
+            const item = t.items.find((it) => it.category === category);
+            return (
+              <div key={category} className="flex items-center gap-3 px-3 py-2">
+                <dt className="w-12 shrink-0 text-[11.5px] font-bold text-text-muted">
+                  {label}
+                </dt>
+                <dd className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary">
+                  {item ? item.name : category === "gpu" ? "내장그래픽" : "—"}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+
+        {t.items.length > SPEC_ROWS.length && (
+          <p className="mt-2 text-[12px] text-text-muted">
+            외 {t.items.length - SPEC_ROWS.length}개 품목 포함
+          </p>
+        )}
+      </div>
+
+      {/* 가격 + CTA */}
+      <div className="shrink-0 border-t border-border pt-4 md:w-[220px] md:border-l md:border-t-0 md:pl-6 md:pt-0">
+        {rate > 0 && (
+          <div className="mb-0.5 flex items-baseline gap-2">
+            <span className="text-[17px] font-black text-destructive">{rate}%</span>
+            <s className="font-mono text-[13px] text-text-muted">
+              {formatWon(t.listTotal)}
+            </s>
+          </div>
+        )}
+        <div className="mb-1 font-mono text-[22px] font-extrabold text-primary">
+          {formatWon(t.total)}
+        </div>
+        <p className="mb-3 text-[11.5px] text-text-muted">VAT 별도</p>
+        <Button asChild variant="cta" className="w-full">
+          <Link href="/estimate/pc">이 사양으로 시작하기</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BuySections() {
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
   const [ready, setReady] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPublicTemplates()
@@ -142,12 +238,24 @@ function BuySections() {
       .finally(() => setReady(true));
   }, []);
 
+  const tags = useMemo(
+    () =>
+      Array.from(
+        new Set(templates.map((t) => t.tag).filter((v): v is string => !!v))
+      ),
+    [templates]
+  );
+  const shown = useMemo(
+    () => (activeTag ? templates.filter((t) => t.tag === activeTag) : templates),
+    [templates, activeTag]
+  );
+
   return (
     <>
       {/* 추천 사양 */}
       <section className="border-b border-border bg-background py-16 md:py-24">
         <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 md:px-10">
-          <div className="mb-12 max-w-[660px]">
+          <div className="mb-10 max-w-[660px]">
             <Eyebrow>추천 사양</Eyebrow>
             <h2 className="mb-4 text-[28px] font-black leading-tight tracking-[-0.02em] text-foreground md:text-[38px]">
               고민되시면
@@ -160,64 +268,43 @@ function BuySections() {
             </p>
           </div>
 
+          {/* 탭 — 분류(tag)를 매긴 구성이 있을 때만 나온다 */}
+          {tags.length > 0 && (
+            <div className="mb-8 flex flex-wrap gap-2">
+              {[null, ...tags].map((tag) => (
+                <button
+                  key={tag ?? "all"}
+                  type="button"
+                  onClick={() => setActiveTag(tag)}
+                  className={
+                    activeTag === tag
+                      ? "rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background"
+                      : "rounded-full border border-border px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
+                  }
+                >
+                  {tag ?? "전체"}
+                </button>
+              ))}
+            </div>
+          )}
+
           {!ready ? (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-64 animate-pulse rounded-xl border border-border bg-card"
+                  className="h-44 animate-pulse rounded-xl border border-border bg-card"
                 />
               ))}
             </div>
-          ) : templates.length === 0 ? (
+          ) : shown.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border-strong bg-card p-8 text-center text-sm text-text-muted">
               추천 사양을 불러오지 못했습니다. 구성기에서 직접 담아보실 수 있습니다.
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3">
-              {templates.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary/40"
-                >
-                  <h3 className="text-[17px] font-bold text-foreground">{t.name}</h3>
-                  <p className="mb-5 mt-1.5 text-[13px] leading-relaxed text-text-secondary">
-                    {t.description}
-                  </p>
-
-                  <ul className="mb-5 flex flex-1 flex-col gap-2">
-                    {t.items.slice(0, 4).map((it, i) => (
-                      <li key={i} className="flex items-center gap-2.5">
-                        <PartImage
-                          src={it.imageUrl}
-                          alt={it.name}
-                          category={it.category}
-                          size={32}
-                        />
-                        <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary">
-                          {it.name}
-                        </span>
-                      </li>
-                    ))}
-                    {t.items.length > 4 && (
-                      <li className="pl-[42px] text-[12px] text-text-muted">
-                        외 {t.items.length - 4}개 품목
-                      </li>
-                    )}
-                  </ul>
-
-                  <div className="border-t border-border pt-4">
-                    <div className="mb-3 flex items-baseline justify-between">
-                      <span className="text-[12.5px] text-text-muted">합계 (VAT 별도)</span>
-                      <span className="font-mono text-[19px] font-extrabold text-primary">
-                        {formatWon(t.total)}
-                      </span>
-                    </div>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/estimate/pc">이 사양으로 시작하기</Link>
-                    </Button>
-                  </div>
-                </div>
+            <div className="flex flex-col gap-3">
+              {shown.map((t) => (
+                <TemplateCard key={t.id} template={t} />
               ))}
             </div>
           )}
