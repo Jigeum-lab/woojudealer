@@ -51,7 +51,7 @@ function SignupInner() {
       {/* Logo */}
       <Link href="/" className="mb-8 flex items-center gap-2.5">
         <span
-          className="text-xl font-black text-primary"
+          className="text-xl font-black text-white"
           style={{ fontFamily: "SDSwagger" }}
         >
           우주딜러
