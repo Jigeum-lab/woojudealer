@@ -79,7 +79,7 @@ function LoginInner() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <Link href="/" className="mb-8">
         <span
-          className="text-2xl font-black text-primary"
+          className="text-2xl font-black text-white"
           style={{ fontFamily: "SDSwagger" }}
         >
           우주딜러
