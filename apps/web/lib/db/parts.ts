@@ -10,6 +10,7 @@ export interface PartRow {
   platform: PartPlatform;
   name: string;
   price: number;
+  list_price: number | null;
   sold_out: boolean;
   grade: string | null;
   link: string | null;
@@ -29,6 +30,7 @@ export function mapPart(row: PartRow): Part {
     platform: row.platform,
     name: row.name,
     price: row.price,
+    listPrice: row.list_price,
     soldOut: row.sold_out,
     grade: row.grade,
     link: row.link,
@@ -67,7 +69,7 @@ export async function fetchPublicParts(): Promise<Part[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("public_parts")
-    .select("id, part_no, category, platform, name, price, sold_out, grade, specs, image_url")
+    .select("id, part_no, category, platform, name, price, list_price, sold_out, grade, specs, image_url")
     .order("category")
     .order("price");
   if (error) throw error;
@@ -98,11 +100,17 @@ export async function fetchPartsByCategory(
 /** 관리자 — 가격/품절 수정 */
 export async function updatePart(
   id: string,
-  patch: { price?: number; soldOut?: boolean; active?: boolean }
+  patch: {
+    price?: number;
+    listPrice?: number | null;
+    soldOut?: boolean;
+    active?: boolean;
+  }
 ): Promise<void> {
   const supabase = createClient();
   const payload: Record<string, unknown> = {};
   if (patch.price !== undefined) payload.price = patch.price;
+  if (patch.listPrice !== undefined) payload.list_price = patch.listPrice;
   if (patch.soldOut !== undefined) payload.sold_out = patch.soldOut;
   if (patch.active !== undefined) payload.active = patch.active;
 
@@ -117,4 +125,28 @@ export async function setStock(partId: string, quantity: number): Promise<void> 
     .from("inventory")
     .upsert({ part_id: partId, quantity }, { onConflict: "part_id" });
   if (error) throw error;
+}
+
+/**
+ * 관리자 — 주어진 부품들의 현재 재고를 한 번에 조회한다.
+ *
+ * 견적을 주문으로 넘기기 전에 "이 주문을 넣으면 뭐가 모자라는지"를 보여주려는 것.
+ * 재고 행이 아예 없는 부품은 0으로 친다(미등록 = 없음).
+ */
+export async function fetchStockFor(
+  partIds: string[]
+): Promise<Map<string, number>> {
+  if (partIds.length === 0) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("stock_status")
+    .select("part_id, quantity")
+    .in("part_id", partIds);
+  if (error) throw error;
+  return new Map(
+    (data as { part_id: string; quantity: number }[]).map((r) => [
+      r.part_id,
+      r.quantity,
+    ])
+  );
 }

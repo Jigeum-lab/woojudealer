@@ -3,22 +3,48 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Printer } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, Printer } from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
-import { fetchQuoteByDisplayNo } from "@/lib/db/quotes";
+import { fetchQuoteByDisplayNo, setQuoteStatus } from "@/lib/db/quotes";
+import { fetchStockFor } from "@/lib/db/parts";
 import { fetchCompany } from "@/lib/db/companies";
 import {
   CATEGORY_META,
   ISSUER,
+  QUOTE_STATUS_META,
   QUOTE_TERMS,
   type Company,
   type Quote,
+  type QuoteStatus,
 } from "@/lib/types";
 import { totalsFromItems } from "@/lib/quote/totals";
 import { formatDate, formatWon } from "@/lib/format";
 
 type DocKind = "quote" | "invoice";
+
+/**
+ * 상태별로 다음에 누를 수 있는 버튼.
+ *
+ * 'ordered'로 넘기는 순간 DB 트리거가 품목만큼 재고를 빼고, 되돌리면 그만큼
+ * 되채운다(inventory_moves에 이동이 남는다). 그래서 버튼 문구에 재고가 움직인다는
+ * 사실을 적어둔다 — 눌러보고 알게 되면 곤란하다.
+ */
+const NEXT_STATUS: Record<
+  QuoteStatus,
+  { to: QuoteStatus; label: string; tone: "primary" | "plain" }[]
+> = {
+  draft:    [{ to: "sent",     label: "발송 완료로",           tone: "primary" }],
+  sent:     [
+    { to: "ordered",  label: "주문 확정 (재고 차감)", tone: "primary" },
+    { to: "draft",    label: "작성 중으로",           tone: "plain" },
+  ],
+  ordered:  [
+    { to: "canceled", label: "주문 취소 (재고 복원)", tone: "plain" },
+    { to: "sent",     label: "발송 완료로 되돌리기",  tone: "plain" },
+  ],
+  canceled: [{ to: "draft",    label: "작성 중으로",           tone: "plain" }],
+};
 
 const DOC_META: Record<DocKind, { title: string; noLabel: string; dateLabel: string; amountLabel: string }> = {
   quote:   { title: "견 적 서",       noLabel: "견적번호", dateLabel: "견적일자", amountLabel: "견적금액" },
@@ -37,6 +63,8 @@ export default function QuoteDocumentPage({
   const [customer, setCustomer] = useState<Company | null>(null);
   const [kind, setKind] = useState<DocKind>("quote");
   const [ready, setReady] = useState(false);
+  const [stock, setStock] = useState<Map<string, number>>(new Map());
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -46,6 +74,12 @@ export default function QuoteDocumentPage({
         setQuote(q);
         if (q?.companyId) {
           setCustomer(await fetchCompany(q.companyId).catch(() => null));
+        }
+        if (q) {
+          const partIds = q.items
+            .map((it) => it.partId)
+            .filter((v): v is string => !!v);
+          setStock(await fetchStockFor(partIds).catch(() => new Map()));
         }
       })
       .catch(() => toast.error("견적서를 불러오지 못했습니다"))
@@ -79,6 +113,38 @@ export default function QuoteDocumentPage({
 
   const meta = DOC_META[kind];
   const totals = totalsFromItems(quote.items, quote.vatIncluded);
+
+  // 주문 확정 시 모자라게 되는 품목. 재고가 없는 부품도 주문은 받으므로
+  // 막지 않고 "이만큼 매입해야 한다"는 경고로만 쓴다.
+  const shortages =
+    quote.status === "ordered"
+      ? []
+      : quote.items
+          .filter((it) => it.partId)
+          .map((it) => ({
+            name: it.name,
+            need: it.quantity,
+            have: stock.get(it.partId!) ?? 0,
+          }))
+          .filter((r) => r.have < r.need);
+
+  async function move(to: QuoteStatus) {
+    if (!quote) return;
+    setMoving(true);
+    try {
+      await setQuoteStatus(quote.id, to);
+      setQuote({ ...quote, status: to });
+      const partIds = quote.items
+        .map((it) => it.partId)
+        .filter((v): v is string => !!v);
+      setStock(await fetchStockFor(partIds).catch(() => new Map()));
+      toast.success(`${QUOTE_STATUS_META[to].label}(으)로 옮겼습니다`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "상태를 바꾸지 못했습니다");
+    } finally {
+      setMoving(false);
+    }
+  }
   const vatNote = quote.vatIncluded ? "(VAT포함)" : "(VAT별도)";
 
   return (
@@ -119,6 +185,59 @@ export default function QuoteDocumentPage({
             PDF 저장 / 인쇄
           </button>
         </div>
+      </div>
+
+      {/* 진행 상태 — 인쇄 시 숨김 */}
+      <div className="mb-6 rounded-xl border border-border bg-card p-4 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[13px] text-text-muted">진행 상태</span>
+            <span className={`text-[15px] font-bold ${QUOTE_STATUS_META[quote.status].color}`}>
+              {QUOTE_STATUS_META[quote.status].label}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {NEXT_STATUS[quote.status].map((n) => (
+              <button
+                key={n.to}
+                type="button"
+                disabled={moving}
+                onClick={() => move(n.to)}
+                className={
+                  n.tone === "primary"
+                    ? "flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                    : "flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-[13px] font-semibold text-text-secondary hover:text-foreground disabled:opacity-50"
+                }
+              >
+                {moving && <Loader2 className="size-3.5 animate-spin" />}
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {shortages.length > 0 && (
+          <div className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-warning">
+              <AlertTriangle className="size-4" />
+              주문 확정 시 재고가 모자랍니다 — 매입이 필요합니다
+            </div>
+            <ul className="flex flex-col gap-1">
+              {shortages.map((r) => (
+                <li key={r.name} className="flex gap-2 text-[12.5px] text-text-secondary">
+                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                  <span className="shrink-0 font-mono text-text-muted">
+                    필요 {r.need} / 보유 {r.have}
+                    <span className="ml-1.5 font-bold text-warning">
+                      부족 {r.need - r.have}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* 문서 본문 — 인쇄 대상 */}

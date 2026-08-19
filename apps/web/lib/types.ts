@@ -186,6 +186,8 @@ export interface Part {
   platform: PartPlatform;
   name: string;
   price: number;
+  /** 정가. price보다 클 때만 화면에 취소선·할인율이 붙는다. 미입력이면 null */
+  listPrice: number | null;
   soldOut: boolean;
   grade: string | null;
   link: string | null;

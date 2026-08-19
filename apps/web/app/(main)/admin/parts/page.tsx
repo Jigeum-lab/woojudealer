@@ -99,9 +99,14 @@ export default function AdminPartsPage() {
     setParts((prev) => prev.map((p) => (p.id === part.id ? { ...p, ...changes } : p)));
     setSavingId(part.id);
     try {
-      if (changes.price !== undefined || changes.soldOut !== undefined) {
+      if (
+        changes.price !== undefined ||
+        changes.listPrice !== undefined ||
+        changes.soldOut !== undefined
+      ) {
         await updatePart(part.id, {
           price: changes.price,
+          listPrice: changes.listPrice,
           soldOut: changes.soldOut,
         });
       }
@@ -258,13 +263,16 @@ export default function AdminPartsPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[820px]">
+          <table className="w-full min-w-[940px]">
             <thead>
               <tr className="border-b border-border text-left text-[13px] text-text-muted">
                 <th className="w-[110px] px-4 py-3 font-semibold">분류</th>
                 <th className="px-4 py-3 font-semibold">제품명</th>
                 <th className="w-[70px] px-2 py-3 text-center font-semibold">등급</th>
-                <th className="w-[130px] px-3 py-3 text-right font-semibold">가격</th>
+                <th className="w-[120px] px-3 py-3 text-right font-semibold">
+                  정가
+                </th>
+                <th className="w-[130px] px-3 py-3 text-right font-semibold">판매가</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">재고</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">품절</th>
               </tr>
@@ -285,6 +293,22 @@ export default function AdminPartsPage() {
                   </td>
                   <td className="px-2 py-2 text-center text-[12px] text-text-muted">
                     {p.grade ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {/* 비워두면 할인 표기가 아예 안 나간다 — 없는 할인을 만들지 않기 위해 */}
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="—"
+                      defaultValue={p.listPrice ?? ""}
+                      onBlur={(e) => {
+                        const raw = e.target.value.trim();
+                        const v = raw === "" ? null : Number(raw);
+                        if (v !== null && (!Number.isFinite(v) || v < 0)) return;
+                        if (v !== p.listPrice) patch(p, { listPrice: v });
+                      }}
+                      className="h-8 text-right text-[13px] text-text-muted"
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <Input
