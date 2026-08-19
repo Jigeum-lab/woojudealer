@@ -131,7 +131,7 @@ export function SiteHeader() {
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-4 sm:px-6 md:px-10">
           <Link href="/" className="flex shrink-0 items-center">
             <Image
-              src="/wooju/logo.svg"
+              src="/wooju/logo-green.svg"
               alt="우주딜러"
               width={74}
               height={28}
@@ -253,7 +253,7 @@ export function SiteHeader() {
             <SheetTitle asChild>
               <Link href="/" onClick={() => setMobileOpen(false)}>
                 <Image
-                  src="/wooju/logo.svg"
+                  src="/wooju/logo-green.svg"
                   alt="우주딜러"
                   width={74}
                   height={28}
