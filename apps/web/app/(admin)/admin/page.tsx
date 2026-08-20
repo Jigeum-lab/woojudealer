@@ -171,18 +171,6 @@ export default function AdminPage() {
           </Link>
         )}
 
-        {/* 운영 화면은 헤더 메뉴에 없다 — 진입로를 여기 둔다 */}
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <OpsLink
-            href="/admin/inquiries"
-            icon={Inbox}
-            label="견적 문의함"
-            badge={pendingInquiries || undefined}
-          />
-          <OpsLink href="/quotes" icon={Calculator} label="견적서" />
-          <OpsLink href="/admin/parts" icon={Boxes} label="부품·재고" />
-        </div>
-
         {/* Summary */}
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <SummaryCard label="전체 신청" value={stats.total} />
@@ -329,35 +317,6 @@ export default function AdminPage() {
 }
 
 /** 운영 화면 진입 타일. badge는 처리해야 할 건수 */
-function OpsLink({
-  href,
-  icon: Icon,
-  label,
-  badge,
-}: {
-  href: string;
-  icon: typeof Inbox;
-  label: string;
-  badge?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:border-border-strong"
-    >
-      <Icon className="size-4 shrink-0 text-text-muted" />
-      <span className="flex-1 text-[14px] font-semibold text-foreground">
-        {label}
-      </span>
-      {badge !== undefined && (
-        <span className="rounded-full bg-primary px-2 py-0.5 text-[12px] font-bold text-primary-foreground">
-          {badge}
-        </span>
-      )}
-      <ArrowRight className="size-4 shrink-0 text-text-muted" />
-    </Link>
-  );
-}
 
 function SummaryCard({
   label,
