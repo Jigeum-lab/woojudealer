@@ -3,7 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Boxes, Calculator, Inbox, LayoutDashboard, LogOut } from "lucide-react";
+import {
+  Boxes,
+  Calculator,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  MonitorCog,
+} from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 
@@ -23,6 +30,7 @@ const NAV = [
   { href: "/admin/inquiries", label: "견적 문의함", icon: Inbox },
   { href: "/quotes", label: "견적서", icon: Calculator },
   { href: "/admin/parts", label: "부품·재고", icon: Boxes },
+  { href: "/admin/templates", label: "추천 PC", icon: MonitorCog },
 ] as const;
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
