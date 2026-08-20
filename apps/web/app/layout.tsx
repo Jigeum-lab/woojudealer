@@ -52,6 +52,22 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
+        {/*
+          비밀번호 재설정 메일의 복구 토큰(#type=recovery)은 우리가 지정한
+          redirectTo가 아니라 Supabase의 Site URL(= 홈)로 떨어지는 경우가 있다.
+          그러면 홈만 뜨고 끝나 새 비밀번호를 세울 방법이 없다.
+
+          이 검사를 React 쪽에 두면 늦는다 — 랜딩이 부품 목록을 부르며 Supabase
+          클라이언트를 만드는 순간 detectSessionInUrl이 해시를 먹어치워, 재설정
+          화면으로 넘어가도 토큰이 남아있지 않다. head의 인라인 스크립트는 모듈이
+          로드되기 전에 실행되므로 그보다 먼저 가로챈다.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var h=location.hash;if(h.indexOf('type=recovery')>-1&&location.pathname!=='/auth/reset'){location.replace('/auth/reset'+h);}}catch(e){}})();",
+          }}
+        />
       </head>
       <body className="min-h-screen">
         <AuthProvider>

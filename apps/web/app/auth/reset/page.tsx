@@ -54,6 +54,24 @@ export default function ResetPasswordPage() {
         }
       }
 
+      // implicit 링크(#access_token=...)는 토큰을 직접 세션으로 세운다.
+      // createBrowserClient의 detectSessionInUrl에 기대면 해시가 그대로 남고
+      // 세션이 안 잡히는 경우가 있다 — 링크가 멀쩡한데 "만료됐다"고 뜬다.
+      const at = hash.get("access_token");
+      const rt = hash.get("refresh_token");
+      if (at && rt) {
+        const { error } = await supabase.auth.setSession({
+          access_token: at,
+          refresh_token: rt,
+        });
+        if (error) {
+          if (active) setPhase("expired");
+          return;
+        }
+        // 주소창에 토큰을 남겨두지 않는다
+        window.history.replaceState(null, "", url.pathname);
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();

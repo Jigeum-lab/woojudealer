@@ -82,6 +82,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // 비밀번호 재설정 메일의 복구 토큰은 우리가 지정한 redirectTo가 아니라
+    // Supabase의 Site URL(= 홈)로 떨어지는 경우가 있다. 그러면 홈만 뜨고 끝난다.
+    // 토큰이 어느 페이지에 떨어지든 재설정 화면으로 넘긴다. 해시를 그대로 달고
+    // 가야 그쪽 클라이언트가 세션을 세울 수 있다.
+    //
+    // onAuthStateChange의 PASSWORD_RECOVERY로는 못 잡는다 — 그 이벤트는
+    // 클라이언트 생성 시점의 URL 처리 중에 나가서 리스너를 붙이기 전에 지나간다.
+    if (typeof window !== "undefined") {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      if (
+        hash.get("type") === "recovery" &&
+        window.location.pathname !== "/auth/reset"
+      ) {
+        window.location.replace(`/auth/reset${window.location.hash}`);
+        return;
+      }
+    }
+
     const supabase = createClient();
     let active = true;
 
@@ -100,6 +118,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // 위 해시 검사가 주 경로이고 이건 백스톱이다.
+      if (event === "PASSWORD_RECOVERY") {
+        if (window.location.pathname !== "/auth/reset") {
+          window.location.replace("/auth/reset");
+        }
+        return;
+      }
       if (event === "SIGNED_IN" && session?.user) {
         await loadFromSupabase(session.user);
       } else if (event === "SIGNED_OUT") {
