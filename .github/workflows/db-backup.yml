@@ -1,0 +1,48 @@
+# Supabase 일일 백업 (Free 플랜은 자동 백업이 없으므로 직접 받는다)
+# 부수효과: 매일 DB에 접속하므로 Free 플랜의 "7일 무활동 자동정지"도 함께 막힌다.
+#
+# 사전 준비 — GitHub 저장소 Settings > Secrets and variables > Actions 에
+#   SUPABASE_DB_URL  등록
+#
+#   ⚠️ 반드시 Supabase 대시보드 > Connect > "Session pooler" 주소를 쓸 것.
+#      Direct connection(db.xxxx.supabase.co)은 IPv6 전용이라 GitHub Actions에서 실패한다.
+#      형식: postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+
+name: DB Backup
+
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 매일 04:00 KST
+  workflow_dispatch:        # 수동 실행 (이관 직전에 한 번 돌릴 것)
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 백업 시각 기록
+        id: stamp
+        run: echo "date=$(date -u +'%Y%m%d-%H%M')" >> "$GITHUB_OUTPUT"
+
+      - name: 덤프 (역할 / 스키마 / 데이터)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          supabase db dump --db-url "$DB_URL" --role-only -f roles.sql
+          supabase db dump --db-url "$DB_URL"             -f schema.sql
+          supabase db dump --db-url "$DB_URL" --data-only -f data.sql
+          ls -lh roles.sql schema.sql data.sql
+
+      - name: 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ steps.stamp.outputs.date }}
+          path: |
+            roles.sql
+            schema.sql
+            data.sql
+          retention-days: 90
