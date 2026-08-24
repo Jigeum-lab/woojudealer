@@ -16,6 +16,7 @@ export interface PartRow {
   link: string | null;
   specs: Record<string, string | number | null> | null;
   image_url: string | null;
+  price_checked_at?: string | null;
   active: boolean;
   /** inventory 조인 결과 — 재고 미등록이면 빈 배열 */
   inventory?: { quantity: number }[] | { quantity: number } | null;
@@ -37,6 +38,7 @@ export function mapPart(row: PartRow): Part {
     specs: row.specs ?? {},
     stock: inv ? inv.quantity : null,
     imageUrl: row.image_url,
+    priceCheckedAt: row.price_checked_at ?? null,
   };
 }
 

@@ -79,6 +79,7 @@ export async function POST(request: Request) {
   }
 
   // 3) 순차 조회 — 간격을 두고 훑는다
+  const checkedAt = new Date().toISOString();
   const results: Result[] = [];
   const rows = (parts ?? []) as {
     id: string;
@@ -107,6 +108,14 @@ export async function POST(request: Request) {
     const found = await fetchCompuzonePrice(productNo);
 
     if (found.status !== "ok") {
+      // 단종은 확인이 끝난 것으로 본다 — 매번 다시 훑어도 결과가 같다.
+      // 반대로 error·unparsable은 일시적일 수 있어 시각을 남기지 않고 다음에 재시도한다.
+      if (found.status === "discontinued") {
+        await admin
+          .from("parts")
+          .update({ price_checked_at: checkedAt })
+          .eq("id", part.id);
+      }
       results.push({
         id: part.id,
         name: part.name,
@@ -118,7 +127,12 @@ export async function POST(request: Request) {
       continue;
     }
 
+    // 값이 그대로여도 '확인은 했다'를 남긴다 — 다음 번에 다시 훑지 않기 위해.
     if (found.price === part.price) {
+      await admin
+        .from("parts")
+        .update({ price_checked_at: checkedAt })
+        .eq("id", part.id);
       results.push({
         id: part.id,
         name: part.name,
@@ -131,7 +145,7 @@ export async function POST(request: Request) {
 
     const { error: upErr } = await admin
       .from("parts")
-      .update({ price: found.price })
+      .update({ price: found.price, price_checked_at: checkedAt })
       .eq("id", part.id);
 
     results.push({

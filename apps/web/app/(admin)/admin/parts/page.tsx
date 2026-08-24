@@ -81,6 +81,45 @@ function splitCsvLine(line: string): string[] {
 /** 한 줄 페이지에 몇 건씩 — 화면에서 스크롤로 훑을 수 있는 정도 */
 const PAGE_SIZE = 100;
 
+/**
+ * 가격을 며칠 지나면 낡은 것으로 볼지. 대표가 주 1~2회면 된다고 해서 7일.
+ * 확인한 적 없는 부품(price_checked_at = null)은 무조건 낡은 것으로 친다.
+ */
+const STALE_DAYS = 7;
+
+/**
+ * 새로고침이 자동으로 훑는 최대 건수.
+ *
+ * 새로고침 한 번에 405건을 다 돌면 6분 넘게 걸리고 컴퓨존에도 한꺼번에 몰린다.
+ * 오래된 것부터 이만큼만 훑고 나머지는 다음 새로고침으로 넘긴다 —
+ * 주 1~2회 눌러 쓰는 리듬이면 며칠 안에 전체가 한 바퀴 돈다.
+ */
+const AUTO_REFRESH_LIMIT = 60;
+
+/** 한 요청에 보내는 건수 — 서버 라우트의 상한과 맞춘다 */
+const BATCH = 25;
+
+function isCompuzone(part: Part): boolean {
+  return !!part.link && part.link.includes("compuzone.co.kr");
+}
+
+/** 가격을 다시 확인해야 하는가 */
+function isStale(part: Part): boolean {
+  if (!isCompuzone(part)) return false;
+  if (!part.priceCheckedAt) return true;
+  const age = Date.now() - new Date(part.priceCheckedAt).getTime();
+  return age > STALE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/** "3일 전" 같은 표기. 확인한 적 없으면 null */
+function agoLabel(iso: string | null): string | null {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "오늘";
+  if (days === 1) return "어제";
+  return `${days}일 전`;
+}
+
 /** 내보내기·가져오기 공용 컬럼. 이 순서를 바꾸면 대표가 쓰던 파일이 깨진다. */
 const CSV_HEADER = [
   "고유번호",
@@ -163,11 +202,14 @@ export default function AdminPartsPage() {
   );
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (): Promise<Part[] | null> => {
     try {
-      setParts(await fetchAllParts());
+      const fresh = await fetchAllParts();
+      setParts(fresh);
+      return fresh;
     } catch {
       toast.error("부품 목록을 불러오지 못했습니다");
+      return null;
     } finally {
       setReady(true);
     }
@@ -206,7 +248,8 @@ export default function AdminPartsPage() {
     const soldOut = parts.filter((p) => p.soldOut).length;
     const noStock = parts.filter((p) => p.stock !== null && p.stock <= 0).length;
     const tracked = parts.filter((p) => p.stock !== null).length;
-    return { total: parts.length, soldOut, noStock, tracked };
+    const stale = parts.filter(isStale).length;
+    return { total: parts.length, soldOut, noStock, tracked, stale };
   }, [parts]);
 
   /** 낙관적 갱신 — 실패하면 되돌린다 */
@@ -238,68 +281,82 @@ export default function AdminPartsPage() {
   }
 
   /**
-   * 컴퓨존 현재가로 단가를 갱신한다.
+   * 주어진 부품들의 현재가를 컴퓨존에서 확인해 단가를 맞춘다.
    *
-   * 대표 요청은 주 1~2회 일괄 갱신이라 상시 배치 대신 눌러서 돌리는 방식으로 뒀다.
-   * 한 번에 다 보내지 않고 25건씩 끊어 순차로 돌린다 — 서버리스 실행 시간 안에
+   * 25건씩 끊어 보내고 서버가 순차 + 간격을 두고 훑는다 — 서버리스 실행 시간 안에
    * 들어와야 하고, 컴퓨존 쪽에도 한꺼번에 몰지 않기 위해서다(예전 IP 차단 이력).
-   * 지금 화면의 필터 결과만 대상으로 한다. 분류를 좁혀 부분 갱신도 가능하다.
    */
-  async function refreshPrices() {
-    const targets = filtered.filter((p) => p.link?.includes("compuzone.co.kr"));
-    if (targets.length === 0) {
-      toast.info("이 목록에는 컴퓨존 링크가 있는 부품이 없습니다");
-      return;
-    }
-    if (
-      !window.confirm(
-        `${formatNumber(targets.length)}건의 현재가를 컴퓨존에서 확인해 갱신합니다.\n` +
-          `건당 0.7초 간격이라 약 ${Math.ceil((targets.length * 0.9) / 60)}분 걸립니다. 진행할까요?`
-      )
-    ) {
-      return;
-    }
-
-    const BATCH = 25;
-    let updated = 0;
-    let failed = 0;
-    setRefreshing({ done: 0, total: targets.length });
-
-    try {
-      for (let i = 0; i < targets.length; i += BATCH) {
-        const chunk = targets.slice(i, i + BATCH);
-        const res = await fetch("/api/parts/price-refresh", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ partIds: chunk.map((p) => p.id) }),
-        });
-        if (!res.ok) {
-          const { error } = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(error ?? `갱신 실패 (HTTP ${res.status})`);
+  const runRefresh = useCallback(
+    async (targets: Part[], opts?: { silentWhenEmpty?: boolean }) => {
+      if (targets.length === 0) {
+        if (!opts?.silentWhenEmpty) {
+          toast.info("이 목록에는 컴퓨존 링크가 있는 부품이 없습니다");
         }
-        const { results } = (await res.json()) as {
-          results: { status: string }[];
-        };
-        updated += results.filter((r) => r.status === "updated").length;
-        failed += results.filter(
-          (r) => r.status === "error" || r.status === "unparsable"
-        ).length;
-        setRefreshing({ done: Math.min(i + BATCH, targets.length), total: targets.length });
+        return;
       }
 
-      await reload();
-      // 실패 건수를 감추지 않는다 — 다 갱신된 줄 알고 견적을 내면 안 되므로.
-      toast.success(
-        `${updated}건 가격이 바뀌었습니다` +
-          (failed > 0 ? ` / ${failed}건은 확인 실패` : "")
-      );
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "가격 갱신 실패");
-    } finally {
-      setRefreshing(null);
+      let updated = 0;
+      let failed = 0;
+      let gone = 0;
+      setRefreshing({ done: 0, total: targets.length });
+
+      try {
+        for (let i = 0; i < targets.length; i += BATCH) {
+          const chunk = targets.slice(i, i + BATCH);
+          const res = await fetch("/api/parts/price-refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ partIds: chunk.map((p) => p.id) }),
+          });
+          if (!res.ok) {
+            const { error } = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            throw new Error(error ?? `갱신 실패 (HTTP ${res.status})`);
+          }
+          const { results } = (await res.json()) as { results: { status: string }[] };
+          updated += results.filter((r) => r.status === "updated").length;
+          gone += results.filter((r) => r.status === "discontinued").length;
+          failed += results.filter(
+            (r) => r.status === "error" || r.status === "unparsable"
+          ).length;
+          setRefreshing({
+            done: Math.min(i + BATCH, targets.length),
+            total: targets.length,
+          });
+        }
+
+        await reload();
+        // 실패·단종을 감추지 않는다 — 다 맞춰진 줄 알고 견적을 내면 안 되므로.
+        const parts = [`${updated}건 가격이 바뀌었습니다`];
+        if (gone > 0) parts.push(`단종 ${gone}건`);
+        if (failed > 0) parts.push(`확인 실패 ${failed}건`);
+        toast.success(parts.join(" / "));
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "가격 갱신 실패");
+      } finally {
+        setRefreshing(null);
+      }
+    },
+    [reload]
+  );
+
+  /**
+   * 새로고침 — 목록을 다시 읽고, 낡은 가격이 있으면 이어서 긁어온다.
+   *
+   * 대표 요청(2026-08-24): "어드민에서 새로고침하면 가격도 업데이트되게".
+   * 다만 누를 때마다 405건을 전부 훑으면 6분씩 걸리므로, 확인한 지 7일이 지난
+   * 것부터 최대 60건만 돈다. 주 1~2회 누르는 리듬이면 며칠 안에 한 바퀴 돈다.
+   */
+  async function handleRefresh() {
+    const fresh = await reload();
+    const stale = (fresh ?? []).filter(isStale).slice(0, AUTO_REFRESH_LIMIT);
+    if (stale.length === 0) {
+      toast.success("목록을 새로고침했습니다 — 가격은 모두 최신입니다");
+      return;
     }
+    toast.info(`낡은 가격 ${stale.length}건을 확인합니다`);
+    await runRefresh(stale, { silentWhenEmpty: true });
   }
 
   /** 지금 화면의 필터 결과를 그대로 CSV로 내려받는다 — 고쳐서 다시 올리면 반영된다 */
@@ -530,8 +587,9 @@ export default function AdminPartsPage() {
           </Button>
           <Button
             variant="outline"
-            onClick={refreshPrices}
+            onClick={() => runRefresh(filtered.filter(isCompuzone))}
             disabled={refreshing !== null}
+            title="지금 목록 전체를 컴퓨존에서 다시 확인합니다"
           >
             {refreshing ? (
               <Loader2 className="size-4 animate-spin" />
@@ -540,7 +598,7 @@ export default function AdminPartsPage() {
             )}
             {refreshing
               ? `가격 확인 중 ${refreshing.done}/${refreshing.total}`
-              : "컴퓨존 가격 갱신"}
+              : "전체 가격 갱신"}
           </Button>
           <Button variant="outline" onClick={exportCsv}>
             <Download className="size-4" />
@@ -554,7 +612,12 @@ export default function AdminPartsPage() {
             {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             CSV 가져오기
           </Button>
-          <Button variant="outline" onClick={reload}>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing !== null}
+            title={`목록을 다시 읽고, ${STALE_DAYS}일 넘게 확인 안 한 가격을 이어서 갱신합니다`}
+          >
             <RefreshCw className="size-4" />
             새로고침
           </Button>
@@ -563,9 +626,13 @@ export default function AdminPartsPage() {
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <Stat label="전체 부품" value={formatNumber(stats.total)} />
+        <Stat
+          label={`가격 확인 필요 (${STALE_DAYS}일+)`}
+          value={formatNumber(stats.stale)}
+          tone={stats.stale > 0 ? "warn" : undefined}
+        />
         <Stat label="공급사 품절" value={formatNumber(stats.soldOut)} tone="warn" />
-        <Stat label="재고 등록됨" value={formatNumber(stats.tracked)} />
-        <Stat label="재고 0" value={formatNumber(stats.noStock)} tone="warn" />
+        <Stat label="재고 0 / 등록" value={`${formatNumber(stats.noStock)} / ${formatNumber(stats.tracked)}`} />
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
@@ -603,7 +670,7 @@ export default function AdminPartsPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[940px]">
+          <table className="w-full min-w-[1040px]">
             <thead>
               <tr className="border-b border-border text-left text-[13px] text-text-muted">
                 <th className="w-[110px] px-4 py-3 font-semibold">분류</th>
@@ -613,6 +680,7 @@ export default function AdminPartsPage() {
                   정가
                 </th>
                 <th className="w-[130px] px-3 py-3 text-right font-semibold">판매가</th>
+                <th className="w-[92px] px-2 py-3 text-center font-semibold">가격확인</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">재고</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">품절</th>
               </tr>
@@ -662,6 +730,22 @@ export default function AdminPartsPage() {
                       }}
                       className="h-8 text-right text-[13px]"
                     />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {isCompuzone(p) ? (
+                      <span
+                        className={`text-[12px] ${
+                          isStale(p) ? "text-yellow-400" : "text-text-muted"
+                        }`}
+                        title={p.priceCheckedAt ?? "확인한 적 없음"}
+                      >
+                        {agoLabel(p.priceCheckedAt) ?? "미확인"}
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-text-muted/60" title="컴퓨존 링크가 아니라 자동 확인 대상이 아닙니다">
+                        —
+                      </span>
+                    )}
                   </td>
                   <td className="px-2 py-2">
                     <Input
@@ -731,10 +815,13 @@ export default function AdminPartsPage() {
       )}
 
       <p className="mt-4 text-[13px] leading-relaxed text-text-muted">
-        <strong className="text-text-secondary">컴퓨존 가격 갱신</strong> — 지금 목록에서
-        컴퓨존 링크가 있는 부품의 현재가를 읽어 단가를 맞춥니다. 건당 0.7초 간격으로
-        순차 조회하며, 분류를 좁혀 두면 그만큼만 돕니다. 단종된 상품은 건드리지 않고
-        건너뜁니다. 바뀐 가격은 이력에 남습니다.
+        <strong className="text-text-secondary">새로고침</strong> — 목록을 다시 읽고,
+        확인한 지 {STALE_DAYS}일이 지난 가격을 오래된 것부터 최대 {AUTO_REFRESH_LIMIT}건까지
+        컴퓨존에서 확인해 맞춥니다. 주 1~2회 눌러 두면 며칠 안에 전체가 한 바퀴 돕니다.
+        <br />
+        <strong className="text-text-secondary">전체 가격 갱신</strong> — 기다리지 않고
+        지금 목록 전체를 다시 확인합니다(분류를 좁히면 그만큼만). 건당 0.7초 간격으로
+        순차 조회하며, 단종 상품은 건드리지 않고 건너뜁니다. 바뀐 가격은 이력에 남습니다.
         <br />
         <br />
         <strong className="text-text-secondary">CSV로 한 번에 고치기</strong> — 내보내기로

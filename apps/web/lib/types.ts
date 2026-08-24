@@ -197,6 +197,8 @@ export interface Part {
   stock: number | null;
   /** 부품 사진. 없는 부품이 있어 null 가능 */
   imageUrl: string | null;
+  /** 매입처 현재가를 마지막으로 확인한 시각. null이면 확인한 적 없음 */
+  priceCheckedAt: string | null;
 }
 
 export interface QuoteItem {
