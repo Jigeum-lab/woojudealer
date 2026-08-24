@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  TrendingUp,
   Upload,
 } from "lucide-react";
 
@@ -157,6 +158,9 @@ export default function AdminPartsPage() {
   const [uploading, setUploading] = useState(false);
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
+  const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(
+    null
+  );
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
@@ -230,6 +234,71 @@ export default function AdminPartsPage() {
       toast.error(err instanceof Error ? err.message : "저장 실패");
     } finally {
       setSavingId(null);
+    }
+  }
+
+  /**
+   * 컴퓨존 현재가로 단가를 갱신한다.
+   *
+   * 대표 요청은 주 1~2회 일괄 갱신이라 상시 배치 대신 눌러서 돌리는 방식으로 뒀다.
+   * 한 번에 다 보내지 않고 25건씩 끊어 순차로 돌린다 — 서버리스 실행 시간 안에
+   * 들어와야 하고, 컴퓨존 쪽에도 한꺼번에 몰지 않기 위해서다(예전 IP 차단 이력).
+   * 지금 화면의 필터 결과만 대상으로 한다. 분류를 좁혀 부분 갱신도 가능하다.
+   */
+  async function refreshPrices() {
+    const targets = filtered.filter((p) => p.link?.includes("compuzone.co.kr"));
+    if (targets.length === 0) {
+      toast.info("이 목록에는 컴퓨존 링크가 있는 부품이 없습니다");
+      return;
+    }
+    if (
+      !window.confirm(
+        `${formatNumber(targets.length)}건의 현재가를 컴퓨존에서 확인해 갱신합니다.\n` +
+          `건당 0.7초 간격이라 약 ${Math.ceil((targets.length * 0.9) / 60)}분 걸립니다. 진행할까요?`
+      )
+    ) {
+      return;
+    }
+
+    const BATCH = 25;
+    let updated = 0;
+    let failed = 0;
+    setRefreshing({ done: 0, total: targets.length });
+
+    try {
+      for (let i = 0; i < targets.length; i += BATCH) {
+        const chunk = targets.slice(i, i + BATCH);
+        const res = await fetch("/api/parts/price-refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ partIds: chunk.map((p) => p.id) }),
+        });
+        if (!res.ok) {
+          const { error } = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(error ?? `갱신 실패 (HTTP ${res.status})`);
+        }
+        const { results } = (await res.json()) as {
+          results: { status: string }[];
+        };
+        updated += results.filter((r) => r.status === "updated").length;
+        failed += results.filter(
+          (r) => r.status === "error" || r.status === "unparsable"
+        ).length;
+        setRefreshing({ done: Math.min(i + BATCH, targets.length), total: targets.length });
+      }
+
+      await reload();
+      // 실패 건수를 감추지 않는다 — 다 갱신된 줄 알고 견적을 내면 안 되므로.
+      toast.success(
+        `${updated}건 가격이 바뀌었습니다` +
+          (failed > 0 ? ` / ${failed}건은 확인 실패` : "")
+      );
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "가격 갱신 실패");
+    } finally {
+      setRefreshing(null);
     }
   }
 
@@ -459,6 +528,20 @@ export default function AdminPartsPage() {
             <Plus className="size-4" />
             부품 추가
           </Button>
+          <Button
+            variant="outline"
+            onClick={refreshPrices}
+            disabled={refreshing !== null}
+          >
+            {refreshing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <TrendingUp className="size-4" />
+            )}
+            {refreshing
+              ? `가격 확인 중 ${refreshing.done}/${refreshing.total}`
+              : "컴퓨존 가격 갱신"}
+          </Button>
           <Button variant="outline" onClick={exportCsv}>
             <Download className="size-4" />
             CSV 내보내기
@@ -648,6 +731,12 @@ export default function AdminPartsPage() {
       )}
 
       <p className="mt-4 text-[13px] leading-relaxed text-text-muted">
+        <strong className="text-text-secondary">컴퓨존 가격 갱신</strong> — 지금 목록에서
+        컴퓨존 링크가 있는 부품의 현재가를 읽어 단가를 맞춥니다. 건당 0.7초 간격으로
+        순차 조회하며, 분류를 좁혀 두면 그만큼만 돕니다. 단종된 상품은 건드리지 않고
+        건너뜁니다. 바뀐 가격은 이력에 남습니다.
+        <br />
+        <br />
         <strong className="text-text-secondary">CSV로 한 번에 고치기</strong> — 내보내기로
         받은 파일을 엑셀에서 고쳐 그대로 다시 올리면 됩니다. 없는 제품명은 새로 추가되고,
         있는 제품은 갱신됩니다 (분류+제품명이 같으면 같은 부품으로 봅니다).
