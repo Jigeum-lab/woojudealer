@@ -44,3 +44,6 @@ next-env.d.ts
 
 # JetBrains IDE
 .idea/
+
+# 지금랩 스킬 심링크 (로컬 전용, 커밋 제외)
+.claude/skills/

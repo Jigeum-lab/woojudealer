@@ -296,3 +296,27 @@ export function checkCompatibility(sel: Selection): CompatibilityIssue[] {
 export function hasBlockingIssue(issues: CompatibilityIssue[]): boolean {
   return issues.some((i) => i.level === "error");
 }
+
+/**
+ * 후보 부품을 지금 구성에 넣었을 때 조립이 불가능해지는지 판정한다.
+ *
+ * 대표 요청(2026-08-24): "호환성 검증을 아예 선택 자체가 안 되게 해버리는 게 낫다."
+ * 고른 뒤 경고를 띄우는 대신, 고를 수 없게 만들기 위한 함수다.
+ *
+ * 규칙을 따로 쓰지 않고 checkCompatibility를 그대로 돌린다. 판정 로직이 두 벌이
+ * 되면 picker에서는 통과한 조합이 확정 단계에서 막히는 일이 생기기 때문이다.
+ * 후보와 무관한 기존 오류(예: 이미 어긋나 있는 다른 두 슬롯)는 제외하고,
+ * 후보가 낀 error만 차단 사유로 본다. warning은 막지 않는다 — 품절·정보 없음은
+ * 조립 불가가 아니라 확인 사항이다.
+ */
+export function blockingReasonFor(
+  sel: Selection,
+  candidate: Part
+): string | null {
+  const next: Selection = { ...sel, [candidate.category]: candidate };
+  // 후보가 낀 error만 본다 — 다른 두 슬롯끼리 이미 어긋나 있던 건 후보 탓이 아니다.
+  const caused = checkCompatibility(next).find(
+    (i) => i.level === "error" && i.categories.includes(candidate.category)
+  );
+  return caused ? caused.message : null;
+}

@@ -26,7 +26,11 @@ import {
   type PartCategory,
   type PartPlatform,
 } from "@/lib/types";
-import { checkCompatibility, hasBlockingIssue } from "@/lib/quote/compatibility";
+import {
+  blockingReasonFor,
+  checkCompatibility,
+  hasBlockingIssue,
+} from "@/lib/quote/compatibility";
 import { totalsFromSelection } from "@/lib/quote/totals";
 import { formatWon } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -48,21 +52,40 @@ type Quantities = Partial<Record<PartCategory, number>>;
 function PartPicker({
   category,
   parts,
+  selection,
   onPick,
   onClose,
 }: {
   category: PartCategory;
   parts: Part[];
+  selection: Selection;
   onPick: (part: Part) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  // 운영자는 예외 상황(단종 대체품 등)을 처리해야 해서 잠금을 풀 수 있게 둔다.
+  // 기본값은 잠금 — 고객 구성기와 같은 규칙으로 견적을 낸다.
+  const [allowIncompatible, setAllowIncompatible] = useState(false);
+
+  const graded = useMemo(
+    () =>
+      parts.map((part) => ({
+        part,
+        blockedBy: blockingReasonFor(selection, part),
+      })),
+    [parts, selection]
+  );
+
+  const blockedCount = graded.filter((g) => g.blockedBy).length;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return parts;
-    return parts.filter((p) => p.name.toLowerCase().includes(q));
-  }, [parts, query]);
+    return graded.filter(
+      (g) =>
+        (allowIncompatible || !g.blockedBy) &&
+        (!q || g.part.name.toLowerCase().includes(q))
+    );
+  }, [graded, query, allowIncompatible]);
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -82,7 +105,27 @@ function PartPicker({
               className="pl-9"
             />
           </div>
-          <p className="mt-2 text-[13px] text-text-muted">{filtered.length}개 품목</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] text-text-muted">
+              {filtered.length}개 품목
+              {blockedCount > 0 && !allowIncompatible && (
+                <span className="ml-1.5 text-text-muted/80">
+                  · 조립 불가 {blockedCount}개 숨김
+                </span>
+              )}
+            </p>
+            {blockedCount > 0 && (
+              <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={allowIncompatible}
+                  onChange={(e) => setAllowIncompatible(e.target.checked)}
+                  className="size-3.5 cursor-pointer accent-yellow-500"
+                />
+                호환 안 되는 부품도 선택 허용
+              </label>
+            )}
+          </div>
         </div>
 
         <div className="max-h-[52vh] overflow-y-auto px-6 pb-6 pt-2">
@@ -92,7 +135,7 @@ function PartPicker({
             </p>
           )}
           <ul className="flex flex-col gap-1.5">
-            {filtered.map((part) => {
+            {filtered.map(({ part, blockedBy }) => {
               const unavailable = part.soldOut || (part.stock !== null && part.stock <= 0);
               return (
                 <li key={part.id}>
@@ -119,6 +162,11 @@ function PartPicker({
                         {part.stock !== null && (
                           <span className="text-[11px] text-text-muted">
                             재고 {part.stock}개
+                          </span>
+                        )}
+                        {blockedBy && (
+                          <span className="text-[11px] font-medium text-destructive">
+                            조립 불가 — {blockedBy}
                           </span>
                         )}
                       </span>
@@ -585,6 +633,7 @@ export default function NewQuotePage() {
         <PartPicker
           category={picking}
           parts={partsFor(picking)}
+          selection={selection}
           onPick={pick}
           onClose={() => setPicking(null)}
         />

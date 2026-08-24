@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -16,6 +17,10 @@ import {
 
 import { useAuth } from "@/lib/auth-context";
 import { fetchPublicParts } from "@/lib/db/parts";
+import {
+  fetchPublicTemplates,
+  type PublicTemplate,
+} from "@/lib/db/templates-public";
 import { submitInquiry } from "@/lib/db/inquiries";
 import {
   CATEGORY_META,
@@ -27,7 +32,11 @@ import {
   type PartGroup,
   type PartPlatform,
 } from "@/lib/types";
-import { checkCompatibility, hasBlockingIssue } from "@/lib/quote/compatibility";
+import {
+  blockingReasonFor,
+  checkCompatibility,
+  hasBlockingIssue,
+} from "@/lib/quote/compatibility";
 import { totalsFromSelection } from "@/lib/quote/totals";
 import { formatWon } from "@/lib/format";
 import { PartImage } from "@/components/inquiry/part-image";
@@ -76,21 +85,44 @@ const REQUIRED: PartCategory[] = ["cpu", "mainboard", "memory", "psu", "case"];
 function PartPicker({
   category,
   parts,
+  selection,
   onPick,
   onClose,
 }: {
   category: PartCategory;
   parts: Part[];
+  selection: Selection;
   onPick: (part: Part) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+
+  /**
+   * 지금 구성과 조립이 안 되는 부품은 목록에서 뺀다.
+   * 고른 뒤 경고하지 않고 애초에 못 고르게 한다 (대표 요청 2026-08-24).
+   * "호환 안 되는 것도 보기"를 켜면 사유와 함께 비활성 상태로 보여준다 —
+   * 왜 안 보이는지 알 수 없으면 목록이 비어 보이기 때문이다.
+   */
+  const graded = useMemo(
+    () =>
+      parts.map((part) => ({
+        part,
+        blockedBy: blockingReasonFor(selection, part),
+      })),
+    [parts, selection]
+  );
+
+  const blockedCount = graded.filter((g) => g.blockedBy).length;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return parts;
-    return parts.filter((p) => p.name.toLowerCase().includes(q));
-  }, [parts, query]);
+    return graded.filter(
+      (g) =>
+        (showAll || !g.blockedBy) &&
+        (!q || g.part.name.toLowerCase().includes(q))
+    );
+  }, [graded, query, showAll]);
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -110,22 +142,43 @@ function PartPicker({
               className="pl-9"
             />
           </div>
-          <p className="mt-2 text-[13px] text-text-muted">{filtered.length}개 품목</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] text-text-muted">
+              {filtered.length}개 품목
+              {blockedCount > 0 && !showAll && (
+                <span className="ml-1.5 text-text-muted/80">
+                  · 조립 불가 {blockedCount}개 숨김
+                </span>
+              )}
+            </p>
+            {blockedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="text-[12.5px] text-text-muted underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                {showAll ? "호환되는 것만 보기" : "호환 안 되는 것도 보기"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="max-h-[52vh] overflow-y-auto px-6 pb-6 pt-2">
           {filtered.length === 0 ? (
             <p className="py-10 text-center text-sm text-text-muted">
-              검색 결과가 없습니다
+              {blockedCount > 0 && !showAll
+                ? "지금 구성과 조립되는 부품이 없습니다 — 다른 부품을 먼저 바꿔보세요"
+                : "검색 결과가 없습니다"}
             </p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {filtered.map((part) => (
+              {filtered.map(({ part, blockedBy }) => (
                 <li key={part.id}>
                   <button
                     type="button"
+                    disabled={!!blockedBy}
                     onClick={() => onPick(part)}
-                    className="flex w-full items-center gap-4 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary"
+                    className="flex w-full items-center gap-4 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors enabled:hover:border-primary disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     <PartImage
                       src={part.imageUrl}
@@ -137,13 +190,19 @@ function PartPicker({
                       <span className="block truncate text-sm font-medium text-foreground">
                         {part.name}
                       </span>
-                      {part.soldOut && (
-                        <Badge
-                          variant="outline"
-                          className="mt-1 border-yellow-500/40 text-[11px] text-yellow-400"
-                        >
-                          품절 — 입고 확인 필요
-                        </Badge>
+                      {blockedBy ? (
+                        <span className="mt-1 block text-[11.5px] text-destructive">
+                          {blockedBy}
+                        </span>
+                      ) : (
+                        part.soldOut && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 border-yellow-500/40 text-[11px] text-yellow-400"
+                          >
+                            품절 — 입고 확인 필요
+                          </Badge>
+                        )
                       )}
                     </span>
                     <span className="shrink-0 text-sm font-bold text-foreground">
@@ -160,8 +219,9 @@ function PartPicker({
   );
 }
 
-export default function BuildEstimatePage() {
+function BuildEstimateInner() {
   const { user, company } = useAuth();
+  const searchParams = useSearchParams();
 
   const [allParts, setAllParts] = useState<Part[]>([]);
   const [ready, setReady] = useState(false);
@@ -170,20 +230,81 @@ export default function BuildEstimatePage() {
   const [quantities, setQuantities] = useState<Quantities>({});
   const [picking, setPicking] = useState<PartCategory | null>(null);
   const [restored, setRestored] = useState(false);
+  const [templates, setTemplates] = useState<PublicTemplate[]>([]);
 
   const [showContact, setShowContact] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" });
   const [busy, setBusy] = useState(false);
   const [issued, setIssued] = useState<string | null>(null);
 
-  // 부품을 받은 뒤에야 저장된 id를 실제 부품으로 되살릴 수 있다
+  /**
+   * 추천 사양을 구성기에 펼친다.
+   *
+   * 취급이 끝난 부품이 섞여 있으면 그 슬롯만 비우고 알린다 — 조용히 빠지면
+   * 고객은 추천대로 담긴 줄 알고 견적을 넘긴다.
+   */
+  const applyTemplateWith = useCallback(
+    (template: PublicTemplate, byId: Map<string, Part>) => {
+      const next: Selection = {};
+      const nextQty: Quantities = {};
+      const missing: string[] = [];
+
+      for (const item of template.items) {
+        const part = byId.get(item.partId);
+        if (!part) {
+          missing.push(CATEGORY_META[item.category].label);
+          continue;
+        }
+        next[item.category] = part;
+        if (item.qty > 1) nextQty[item.category] = item.qty;
+      }
+
+      setPlatform(template.platform === "common" ? "amd" : template.platform);
+      setSelection(next);
+      setQuantities(nextQty);
+
+      if (missing.length > 0) {
+        toast.warning(
+          `${template.name} — ${missing.join(", ")}는 현재 취급하지 않아 비워뒀습니다`
+        );
+      } else {
+        toast.success(`${template.name} 구성을 담았습니다`);
+      }
+    },
+    []
+  );
+
+  const applyTemplate = useCallback(
+    (template: PublicTemplate) => {
+      applyTemplateWith(template, new Map(allParts.map((p) => [p.id, p])));
+    },
+    [allParts, applyTemplateWith]
+  );
+
+  // 부품을 받은 뒤에야 저장된 id·추천 사양을 실제 부품으로 되살릴 수 있다.
+  // 랜딩에서 "이 사양으로 시작하기"로 들어오면 ?template=id 가 붙는데,
+  // 그때는 저장된 구성보다 넘어온 추천 사양이 우선이다 — 방금 고른 쪽이 의도다.
   useEffect(() => {
-    fetchPublicParts()
-      .then((parts) => {
+    const wanted = searchParams.get("template");
+
+    Promise.all([
+      fetchPublicParts(),
+      fetchPublicTemplates().catch(() => [] as PublicTemplate[]),
+    ])
+      .then(([parts, tpls]) => {
         setAllParts(parts);
+        setTemplates(tpls);
+
+        const byId = new Map(parts.map((p) => [p.id, p]));
+        const template = wanted ? tpls.find((t) => t.id === wanted) : undefined;
+
+        if (template) {
+          applyTemplateWith(template, byId);
+          return;
+        }
+
         const saved: StoredBuild | null = loadBuild();
         if (saved) {
-          const byId = new Map(parts.map((p) => [p.id, p]));
           const revived: Selection = {};
           for (const [cat, id] of Object.entries(saved.picks)) {
             const part = id ? byId.get(id) : undefined;
@@ -199,6 +320,8 @@ export default function BuildEstimatePage() {
         setReady(true);
         setRestored(true);
       });
+    // 최초 1회만 — 이후 파라미터 변화는 아래 카드 클릭이 직접 처리한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 복원이 끝난 뒤부터 저장한다 — 안 그러면 빈 상태가 먼저 덮어쓴다
@@ -362,6 +485,37 @@ export default function BuildEstimatePage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* 구성 */}
           <div className="flex min-w-0 flex-1 flex-col gap-5">
+            {templates.length > 0 && (
+              <div className="rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+                  <h2 className="text-[13px] font-bold text-text-secondary">
+                    추천 사양으로 시작
+                  </h2>
+                  <span className="text-[12px] text-text-muted">
+                    누르면 그대로 담깁니다 · 이후 자유롭게 교체
+                  </span>
+                </div>
+                <ul className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        onClick={() => applyTemplate(t)}
+                        className="flex w-full flex-col gap-1 rounded-lg border border-border bg-background px-4 py-3 text-left transition-colors hover:border-primary"
+                      >
+                        <span className="truncate text-[13.5px] font-bold text-foreground">
+                          {t.name}
+                        </span>
+                        <span className="font-mono text-[13px] text-primary">
+                          {formatWon(t.total)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-2">
               {(["amd", "intel"] as PartPlatform[]).map((p) => (
                 <button
@@ -674,6 +828,7 @@ export default function BuildEstimatePage() {
         <PartPicker
           category={picking}
           parts={partsFor(picking)}
+          selection={selection}
           onPick={(part) => {
             setSelection((prev) => ({ ...prev, [picking]: part }));
             setPicking(null);
@@ -682,6 +837,21 @@ export default function BuildEstimatePage() {
         />
       )}
     </div>
+  );
+}
+
+/** useSearchParams를 쓰므로 Suspense 경계가 필요하다 */
+export default function BuildEstimatePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto flex w-full max-w-[1280px] items-center gap-2 px-4 py-20 text-text-muted sm:px-6 md:px-10">
+          <Loader2 className="size-5 animate-spin" /> 불러오는 중…
+        </div>
+      }
+    >
+      <BuildEstimateInner />
+    </Suspense>
   );
 }
 

@@ -219,7 +219,7 @@ function TemplateCard({ template: t }: { template: PublicTemplate }) {
         </div>
         <p className="mb-3 text-[11.5px] text-text-muted">VAT 별도</p>
         <Button asChild variant="cta" className="w-full">
-          <Link href="/estimate/pc">이 사양으로 시작하기</Link>
+          <Link href={`/estimate/pc?template=${t.id}`}>이 사양으로 시작하기</Link>
         </Button>
       </div>
     </div>

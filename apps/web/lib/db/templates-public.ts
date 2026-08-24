@@ -11,6 +11,8 @@ import type { PartCategory, PartPlatform } from "@/lib/types";
  */
 
 export interface PublicTemplateItem {
+  /** 구성기가 이 id로 선택을 되살린다 */
+  partId: string;
   category: PartCategory;
   name: string;
   price: number;

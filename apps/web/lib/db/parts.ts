@@ -150,3 +150,64 @@ export async function fetchStockFor(
     ])
   );
 }
+
+/* ── 관리자 — 부품 추가·일괄 반영 ────────────────────────────────────────── */
+
+export interface PartUpsertInput {
+  partNo?: number | null;
+  category: PartCategory;
+  platform: PartPlatform;
+  name: string;
+  price: number;
+  listPrice?: number | null;
+  soldOut?: boolean;
+  grade?: string | null;
+  link?: string | null;
+}
+
+function toRow(input: PartUpsertInput) {
+  return {
+    part_no: input.partNo ?? null,
+    category: input.category,
+    platform: input.platform,
+    name: input.name.trim(),
+    price: input.price,
+    list_price: input.listPrice ?? null,
+    sold_out: input.soldOut ?? false,
+    grade: input.grade ?? null,
+    link: input.link ?? null,
+  };
+}
+
+/**
+ * 부품 추가 (같은 분류·제품명이 이미 있으면 그 행을 갱신한다).
+ *
+ * 자연키가 (category, name)이라 이름이 겹치면 새 행이 아니라 수정이 된다.
+ * 임포트 스크립트와 같은 규칙이므로 엑셀 재반영과 결과가 어긋나지 않는다.
+ */
+export async function upsertPart(input: PartUpsertInput): Promise<Part> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("parts")
+    .upsert(toRow(input), { onConflict: "category,name" })
+    .select(SELECT)
+    .single();
+  if (error) throw error;
+  return mapPart(data as PartRow);
+}
+
+/**
+ * CSV 일괄 반영. 신규는 넣고 기존은 고친다.
+ *
+ * 한 건씩 왕복하면 수백 건에서 느려지므로 한 번에 보낸다. 실패하면 전부
+ * 롤백되는 편이 낫다 — 절반만 반영된 단가표는 그대로 견적에 나가기 때문이다.
+ */
+export async function upsertParts(inputs: PartUpsertInput[]): Promise<number> {
+  if (inputs.length === 0) return 0;
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("parts")
+    .upsert(inputs.map(toRow), { onConflict: "category,name" });
+  if (error) throw error;
+  return inputs.length;
+}
