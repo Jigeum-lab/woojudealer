@@ -9,16 +9,22 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  ImagePlus,
   Search,
+  Trash2,
   TrendingUp,
   Upload,
 } from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
 import {
+  clearPartImage,
+  deletePart,
   fetchAllParts,
   setStock,
+  templatesUsingPart,
   updatePart,
+  uploadPartImage,
   upsertPart,
   upsertParts,
   type PartUpsertInput,
@@ -31,6 +37,7 @@ import {
   type PartPlatform,
 } from "@/lib/types";
 import { formatNumber } from "@/lib/format";
+import { PartImage } from "@/components/inquiry/part-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -359,6 +366,89 @@ export default function AdminPartsPage() {
     await runRefresh(stale, { silentWhenEmpty: true });
   }
 
+  /**
+   * 사진 교체.
+   *
+   * 기존 사진은 레포 안 정적 파일이라 대표가 손댈 수 없었다(피드백 2026-08-25:
+   * "부품 그림이 안 맞아서 다른 게 많은데 어떻게 수정하죠?").
+   * 여기서 고른 파일은 Storage로 올라가고 그 자리에서 바뀐다.
+   */
+  async function handleImage(part: Part, file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 올릴 수 있습니다");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("5MB 이하 이미지만 올릴 수 있습니다");
+      return;
+    }
+    setSavingId(part.id);
+    try {
+      const url = await uploadPartImage(part.id, file);
+      setParts((prev) =>
+        prev.map((p) => (p.id === part.id ? { ...p, imageUrl: url } : p))
+      );
+      toast.success("사진을 바꿨습니다");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "사진 업로드 실패");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function handleClearImage(part: Part) {
+    setSavingId(part.id);
+    try {
+      await clearPartImage(part.id);
+      setParts((prev) =>
+        prev.map((p) => (p.id === part.id ? { ...p, imageUrl: null } : p))
+      );
+      toast.success("사진을 지웠습니다");
+    } catch {
+      toast.error("사진을 지우지 못했습니다");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  /**
+   * 부품 삭제.
+   *
+   * 과거 견적서는 안전하다 — 품목 이름·단가를 스냅샷으로 들고 있어서 부품이 사라져도
+   * 그대로 남는다. 다만 추천 PC에 들어 있으면 그 구성에서 빠지므로 미리 알린다.
+   */
+  async function handleDelete(part: Part) {
+    let used: string[] = [];
+    try {
+      used = await templatesUsingPart(part.id);
+    } catch {
+      /* 조회 실패는 삭제를 막을 이유가 아니다 — 경고만 못 붙인다 */
+    }
+
+    const warn =
+      used.length > 0
+        ? `\n\n주의: 추천 PC(${used.join(", ")})에서도 빠집니다.`
+        : "";
+    if (
+      !window.confirm(
+        `"${part.name}"을(를) 삭제할까요?${warn}\n\n이미 발행한 견적서는 그대로 남습니다.`
+      )
+    ) {
+      return;
+    }
+
+    setSavingId(part.id);
+    try {
+      await deletePart(part.id);
+      setParts((prev) => prev.filter((p) => p.id !== part.id));
+      toast.success("삭제했습니다");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "삭제 실패");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   /** 지금 화면의 필터 결과를 그대로 CSV로 내려받는다 — 고쳐서 다시 올리면 반영된다 */
   function exportCsv() {
     // BOM을 붙여야 엑셀이 한글을 깨지 않고 연다
@@ -670,9 +760,10 @@ export default function AdminPartsPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[1040px]">
+          <table className="w-full min-w-[1160px]">
             <thead>
               <tr className="border-b border-border text-left text-[13px] text-text-muted">
+                <th className="w-[64px] px-3 py-3 font-semibold">사진</th>
                 <th className="w-[110px] px-4 py-3 font-semibold">분류</th>
                 <th className="px-4 py-3 font-semibold">제품명</th>
                 <th className="w-[70px] px-2 py-3 text-center font-semibold">등급</th>
@@ -683,6 +774,7 @@ export default function AdminPartsPage() {
                 <th className="w-[92px] px-2 py-3 text-center font-semibold">가격확인</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">재고</th>
                 <th className="w-[90px] px-2 py-3 text-center font-semibold">품절</th>
+                <th className="w-[52px] px-2 py-3 text-center font-semibold">삭제</th>
               </tr>
             </thead>
             <tbody>
@@ -693,6 +785,13 @@ export default function AdminPartsPage() {
                     savingId === p.id ? "opacity-60" : ""
                   }`}
                 >
+                  <td className="px-3 py-2">
+                    <PartImageCell
+                      part={p}
+                      onPick={(file) => handleImage(p, file)}
+                      onClear={() => handleClearImage(p)}
+                    />
+                  </td>
                   <td className="px-4 py-2 text-[13px] text-text-secondary">
                     {CATEGORY_META[p.category].label}
                   </td>
@@ -773,6 +872,18 @@ export default function AdminPartsPage() {
                       aria-label={`${p.name} 품절 여부`}
                     />
                   </td>
+                  <td className="px-2 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(p)}
+                      disabled={savingId === p.id}
+                      aria-label={`${p.name} 삭제`}
+                      title="이 부품을 목록에서 지웁니다"
+                      className="cursor-pointer text-text-muted transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -815,6 +926,18 @@ export default function AdminPartsPage() {
       )}
 
       <p className="mt-4 text-[13px] leading-relaxed text-text-muted">
+        <strong className="text-text-secondary">사진 바꾸기</strong> — 왼쪽 사진을 누르면
+        파일 선택이 열립니다. 고르면 그 자리에서 바뀝니다(5MB 이하 이미지). 사진 위로
+        마우스를 올리면 뜨는 × 로 지울 수 있습니다.
+        <br />
+        <strong className="text-text-secondary">부품 추가·삭제</strong> — 오른쪽 위{" "}
+        <strong className="text-text-secondary">부품 추가</strong> 버튼으로 한 건씩 넣고,
+        각 줄 맨 오른쪽 휴지통으로 지웁니다. 여러 건을 한 번에 넣으려면 아래 CSV를 쓰세요.
+        지운 부품이 들어간 <strong className="text-text-secondary">이미 발행한 견적서는
+        그대로 남습니다</strong>(품목명·단가를 따로 저장해 둡니다). 다만 추천 PC에 들어
+        있으면 그 구성에서는 빠지므로, 삭제할 때 알려드립니다.
+        <br />
+        <br />
         <strong className="text-text-secondary">새로고침</strong> — 목록을 다시 읽고,
         확인한 지 {STALE_DAYS}일이 지난 가격을 오래된 것부터 최대 {AUTO_REFRESH_LIMIT}건까지
         컴퓨존에서 확인해 맞춥니다. 주 1~2회 눌러 두면 며칠 안에 전체가 한 바퀴 돕니다.
@@ -864,6 +987,70 @@ export default function AdminPartsPage() {
  * 스펙(호환성 판정에 쓰는 값)은 여기서 받지 않는다. 엑셀 임포트로 들어온 칸이라
  * 화면에서 손으로 채우게 하면 카테고리마다 키가 달라 틀리기 쉽다.
  */
+/**
+ * 표 안의 사진 칸.
+ *
+ * 썸네일을 누르면 바로 파일 선택이 열린다 — 대표가 잘못 붙은 사진을 한 장씩
+ * 갈아끼우는 게 주 용도라, 편집 화면을 따로 열지 않고 그 자리에서 끝낸다.
+ */
+function PartImageCell({
+  part,
+  onPick,
+  onClear,
+}: {
+  part: Part;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="group relative w-fit">
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPick(f);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        title={part.imageUrl ? "눌러서 사진 바꾸기" : "눌러서 사진 넣기"}
+        className="block cursor-pointer rounded-md ring-offset-2 ring-offset-card transition-shadow hover:ring-2 hover:ring-primary"
+      >
+        {part.imageUrl ? (
+          <PartImage
+            src={part.imageUrl}
+            alt={part.name}
+            category={part.category}
+            size={40}
+          />
+        ) : (
+          <span className="flex size-10 items-center justify-center rounded-md border border-dashed border-border-strong text-text-muted">
+            <ImagePlus className="size-4" />
+          </span>
+        )}
+      </button>
+      {part.imageUrl && (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={`${part.name} 사진 지우기`}
+          title="사진 지우기"
+          className="absolute -right-1.5 -top-1.5 hidden size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white group-hover:flex"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
 function AddPartDialog({
   onClose,
   onSaved,

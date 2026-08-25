@@ -213,3 +213,85 @@ export async function upsertParts(inputs: PartUpsertInput[]): Promise<number> {
   if (error) throw error;
   return inputs.length;
 }
+
+/* ── 관리자 — 부품 사진 ──────────────────────────────────────────────────── */
+
+const IMAGE_BUCKET = "part-images";
+
+/**
+ * 부품 사진 교체.
+ *
+ * 대표 피드백(2026-08-25): 잘못 매칭된 사진이 많은데 고칠 방법이 없었다.
+ * 기존 사진은 레포 안 정적 파일이라 배포를 해야 바뀌었다. Storage에 올려
+ * image_url을 갈아끼우면 화면에서 바로 바뀐다.
+ *
+ * 파일명에 시각을 붙이는 것은 캐시 때문이다. 같은 경로로 덮어쓰면 브라우저·CDN이
+ * 옛 사진을 계속 보여줘 "바꿨는데 그대로"가 된다.
+ */
+export async function uploadPartImage(
+  partId: string,
+  file: File
+): Promise<string> {
+  const supabase = createClient();
+  const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+  const path = `${partId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+
+  const { error: updErr } = await supabase
+    .from("parts")
+    .update({ image_url: publicUrl })
+    .eq("id", partId);
+  if (updErr) throw updErr;
+
+  return publicUrl;
+}
+
+/** 사진 지우기 — 링크만 끊는다. 기존 정적 파일은 다른 부품이 쓸 수 있어 건드리지 않는다 */
+export async function clearPartImage(partId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("parts")
+    .update({ image_url: null })
+    .eq("id", partId);
+  if (error) throw error;
+}
+
+/**
+ * 부품 삭제.
+ *
+ * 과거 견적서는 영향을 받지 않는다 — quote_items가 이름·단가를 스냅샷으로 들고
+ * 있고 part_id만 null이 된다. 다만 추천 PC(quote_template_items)에서는 cascade로
+ * 빠지므로, 호출 전에 쓰이는 곳이 있는지 알려주고 확인을 받는다.
+ */
+export async function deletePart(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("parts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** 이 부품을 쓰는 추천 PC 이름들 — 삭제 전 경고용 */
+export async function templatesUsingPart(partId: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("quote_template_items")
+    .select("quote_templates(name)")
+    .eq("part_id", partId);
+  if (error) throw error;
+  // PostgREST는 조인 대상을 배열로 준다(1:1이라도)
+  type Row = { quote_templates: { name: string }[] | { name: string } | null };
+  return (data as Row[])
+    .flatMap((r) => {
+      const t = r.quote_templates;
+      if (!t) return [];
+      return Array.isArray(t) ? t.map((x) => x.name) : [t.name];
+    })
+    .filter((n): n is string => !!n);
+}
