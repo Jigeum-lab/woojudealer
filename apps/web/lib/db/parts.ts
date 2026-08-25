@@ -295,3 +295,35 @@ export async function templatesUsingPart(partId: string): Promise<string[]> {
     })
     .filter((n): n is string => !!n);
 }
+
+/**
+ * 부품 수정 — id 기준.
+ *
+ * upsertPart는 (분류, 제품명) 자연키로 맞추기 때문에 편집 화면에서 이름을 고치면
+ * 같은 행을 고치는 대신 새 행이 생긴다. 이미 있는 부품을 고칠 때는 반드시 이쪽을 쓴다.
+ */
+export async function updatePartDetails(
+  id: string,
+  input: Partial<PartUpsertInput>
+): Promise<Part> {
+  const supabase = createClient();
+  const payload: Record<string, unknown> = {};
+  if (input.partNo !== undefined) payload.part_no = input.partNo;
+  if (input.category !== undefined) payload.category = input.category;
+  if (input.platform !== undefined) payload.platform = input.platform;
+  if (input.name !== undefined) payload.name = input.name.trim();
+  if (input.price !== undefined) payload.price = input.price;
+  if (input.listPrice !== undefined) payload.list_price = input.listPrice;
+  if (input.soldOut !== undefined) payload.sold_out = input.soldOut;
+  if (input.grade !== undefined) payload.grade = input.grade;
+  if (input.link !== undefined) payload.link = input.link;
+
+  const { data, error } = await supabase
+    .from("parts")
+    .update(payload)
+    .eq("id", id)
+    .select(SELECT)
+    .single();
+  if (error) throw error;
+  return mapPart(data as PartRow);
+}

@@ -7,25 +7,23 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  PackageX,
   Plus,
   RefreshCw,
-  ImagePlus,
   Search,
   Trash2,
   TrendingUp,
   Upload,
+  X,
 } from "lucide-react";
 
 import { useRequireAuth } from "@/lib/auth-context";
 import {
-  clearPartImage,
   deletePart,
   fetchAllParts,
   setStock,
-  templatesUsingPart,
   updatePart,
   uploadPartImage,
-  upsertPart,
   upsertParts,
   type PartUpsertInput,
 } from "@/lib/db/parts";
@@ -36,11 +34,11 @@ import {
   type PartCategory,
   type PartPlatform,
 } from "@/lib/types";
-import { formatNumber } from "@/lib/format";
-import { PartImage } from "@/components/inquiry/part-image";
+import { formatNumber, formatWon } from "@/lib/format";
+import { PartImageCell } from "@/components/admin/part-image-cell";
+import { PartEditorDialog } from "@/components/admin/part-editor-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -48,13 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 /** CSV 한 줄을 따옴표까지 고려해 쪼갠다 */
 function splitCsvLine(line: string): string[] {
@@ -200,10 +191,12 @@ export default function AdminPartsPage() {
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | PartCategory>("all");
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [page, setPage] = useState(1);
-  const [showAdd, setShowAdd] = useState(false);
+  /** null = 닫힘 / "new" = 추가 / Part = 그 부품 상세 */
+  const [editing, setEditing] = useState<Part | "new" | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(
     null
   );
@@ -259,40 +252,6 @@ export default function AdminPartsPage() {
     return { total: parts.length, soldOut, noStock, tracked, stale };
   }, [parts]);
 
-  /** 낙관적 갱신 — 실패하면 되돌린다 */
-  async function patch(part: Part, changes: Partial<Part>) {
-    const before = parts;
-    setParts((prev) => prev.map((p) => (p.id === part.id ? { ...p, ...changes } : p)));
-    setSavingId(part.id);
-    try {
-      if (
-        changes.price !== undefined ||
-        changes.listPrice !== undefined ||
-        changes.soldOut !== undefined
-      ) {
-        await updatePart(part.id, {
-          price: changes.price,
-          listPrice: changes.listPrice,
-          soldOut: changes.soldOut,
-        });
-      }
-      if (changes.stock !== undefined && changes.stock !== null) {
-        await setStock(part.id, changes.stock);
-      }
-    } catch (err: unknown) {
-      setParts(before);
-      toast.error(err instanceof Error ? err.message : "저장 실패");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  /**
-   * 주어진 부품들의 현재가를 컴퓨존에서 확인해 단가를 맞춘다.
-   *
-   * 25건씩 끊어 보내고 서버가 순차 + 간격을 두고 훑는다 — 서버리스 실행 시간 안에
-   * 들어와야 하고, 컴퓨존 쪽에도 한꺼번에 몰지 않기 위해서다(예전 IP 차단 이력).
-   */
   const runRefresh = useCallback(
     async (targets: Part[], opts?: { silentWhenEmpty?: boolean }) => {
       if (targets.length === 0) {
@@ -366,13 +325,7 @@ export default function AdminPartsPage() {
     await runRefresh(stale, { silentWhenEmpty: true });
   }
 
-  /**
-   * 사진 교체.
-   *
-   * 기존 사진은 레포 안 정적 파일이라 대표가 손댈 수 없었다(피드백 2026-08-25:
-   * "부품 그림이 안 맞아서 다른 게 많은데 어떻게 수정하죠?").
-   * 여기서 고른 파일은 Storage로 올라가고 그 자리에서 바뀐다.
-   */
+  /** 목록에서 사진만 바로 교체 — 상세를 열지 않고 끝내는 쪽이 빠르다 */
   async function handleImage(part: Part, file: File) {
     if (!file.type.startsWith("image/")) {
       toast.error("이미지 파일만 올릴 수 있습니다");
@@ -382,7 +335,6 @@ export default function AdminPartsPage() {
       toast.error("5MB 이하 이미지만 올릴 수 있습니다");
       return;
     }
-    setSavingId(part.id);
     try {
       const url = await uploadPartImage(part.id, file);
       setParts((prev) =>
@@ -391,61 +343,97 @@ export default function AdminPartsPage() {
       toast.success("사진을 바꿨습니다");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "사진 업로드 실패");
-    } finally {
-      setSavingId(null);
     }
   }
 
-  async function handleClearImage(part: Part) {
-    setSavingId(part.id);
-    try {
-      await clearPartImage(part.id);
-      setParts((prev) =>
-        prev.map((p) => (p.id === part.id ? { ...p, imageUrl: null } : p))
-      );
-      toast.success("사진을 지웠습니다");
-    } catch {
-      toast.error("사진을 지우지 못했습니다");
-    } finally {
-      setSavingId(null);
-    }
+  /* ── 선택 ─────────────────────────────────────────────────────── */
+
+  const selectedParts = useMemo(
+    () => parts.filter((p) => selected.has(p.id)),
+    [parts, selected]
+  );
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  /**
-   * 부품 삭제.
-   *
-   * 과거 견적서는 안전하다 — 품목 이름·단가를 스냅샷으로 들고 있어서 부품이 사라져도
-   * 그대로 남는다. 다만 추천 PC에 들어 있으면 그 구성에서 빠지므로 미리 알린다.
-   */
-  async function handleDelete(part: Part) {
-    let used: string[] = [];
-    try {
-      used = await templatesUsingPart(part.id);
-    } catch {
-      /* 조회 실패는 삭제를 막을 이유가 아니다 — 경고만 못 붙인다 */
-    }
+  /** 머리글 체크박스 — 지금 페이지에 보이는 것만 다룬다. 안 보이는 400건이 딸려오면 위험하다 */
+  function togglePage() {
+    const ids = pageItems.map((p) => p.id);
+    const allOn = ids.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (allOn) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  }
 
-    const warn =
-      used.length > 0
-        ? `\n\n주의: 추천 PC(${used.join(", ")})에서도 빠집니다.`
-        : "";
+  /* ── 선택한 것 일괄 처리 ──────────────────────────────────────── */
+
+  async function bulkDelete() {
+    const targets = selectedParts;
+    if (targets.length === 0) return;
     if (
       !window.confirm(
-        `"${part.name}"을(를) 삭제할까요?${warn}\n\n이미 발행한 견적서는 그대로 남습니다.`
+        `${formatNumber(targets.length)}개 부품을 삭제할까요?\n\n` +
+          `추천 PC에 들어 있으면 그 구성에서도 빠집니다.\n` +
+          `이미 발행한 견적서는 그대로 남습니다.`
       )
     ) {
       return;
     }
-
-    setSavingId(part.id);
+    setBulkBusy(true);
+    let done = 0;
     try {
-      await deletePart(part.id);
-      setParts((prev) => prev.filter((p) => p.id !== part.id));
-      toast.success("삭제했습니다");
+      for (const part of targets) {
+        await deletePart(part.id);
+        done++;
+      }
+      setParts((prev) => prev.filter((p) => !selected.has(p.id)));
+      setSelected(new Set());
+      toast.success(`${done}개 삭제했습니다`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "삭제 실패");
+      // 중간에 끊겨도 지워진 건 지워진 것이므로 목록을 다시 읽어 맞춘다
+      await reload();
+      setSelected(new Set());
+      toast.error(
+        `${done}개까지 삭제 후 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`
+      );
     } finally {
-      setSavingId(null);
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkSoldOut(soldOut: boolean) {
+    const targets = selectedParts.filter((p) => p.soldOut !== soldOut);
+    if (targets.length === 0) {
+      toast.info(soldOut ? "이미 모두 품절입니다" : "이미 모두 판매중입니다");
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      for (const part of targets) {
+        await updatePart(part.id, { soldOut });
+      }
+      setParts((prev) =>
+        prev.map((p) => (selected.has(p.id) ? { ...p, soldOut } : p))
+      );
+      toast.success(
+        `${targets.length}개를 ${soldOut ? "품절" : "판매중"}으로 바꿨습니다`
+      );
+    } catch {
+      await reload();
+      toast.error("일부만 반영됐습니다 — 목록을 다시 읽었습니다");
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -671,7 +659,7 @@ export default function AdminPartsPage() {
               if (f) handleCsv(f);
             }}
           />
-          <Button onClick={() => setShowAdd(true)}>
+          <Button onClick={() => setEditing("new")}>
             <Plus className="size-4" />
             부품 추가
           </Button>
@@ -753,6 +741,66 @@ export default function AdminPartsPage() {
         </span>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-4 py-2.5">
+          <span className="text-[13px] font-semibold text-foreground">
+            {formatNumber(selected.size)}개 선택됨
+          </span>
+          <span className="mx-1 h-4 w-px bg-border" />
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={bulkBusy || refreshing !== null}
+            onClick={() => runRefresh(selectedParts.filter(isCompuzone))}
+          >
+            <TrendingUp className="size-4" />
+            가격 갱신
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={bulkBusy}
+            onClick={() => bulkSoldOut(true)}
+          >
+            <PackageX className="size-4" />
+            품절 처리
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={bulkBusy}
+            onClick={() => bulkSoldOut(false)}
+          >
+            판매중으로
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={bulkBusy}
+            onClick={bulkDelete}
+            className="text-destructive hover:text-destructive"
+          >
+            {bulkBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            삭제
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={() => setSelected(new Set())}
+          >
+            <X className="size-4" />
+            선택 해제
+          </Button>
+        </div>
+      )}
+
       {!ready ? (
         <div className="flex items-center justify-center py-24 text-text-muted">
           <Loader2 className="mr-2 size-5 animate-spin" />
@@ -760,132 +808,111 @@ export default function AdminPartsPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[1160px]">
+          <table className="w-full min-w-[900px]">
             <thead>
               <tr className="border-b border-border text-left text-[13px] text-text-muted">
-                <th className="w-[64px] px-3 py-3 font-semibold">사진</th>
-                <th className="w-[110px] px-4 py-3 font-semibold">분류</th>
-                <th className="px-4 py-3 font-semibold">제품명</th>
-                <th className="w-[70px] px-2 py-3 text-center font-semibold">등급</th>
-                <th className="w-[120px] px-3 py-3 text-right font-semibold">
-                  정가
+                <th className="w-[44px] px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={
+                      pageItems.length > 0 &&
+                      pageItems.every((p) => selected.has(p.id))
+                    }
+                    onChange={togglePage}
+                    className="size-4 cursor-pointer accent-primary"
+                    aria-label="이 페이지 전체 선택"
+                  />
                 </th>
-                <th className="w-[130px] px-3 py-3 text-right font-semibold">판매가</th>
-                <th className="w-[92px] px-2 py-3 text-center font-semibold">가격확인</th>
-                <th className="w-[90px] px-2 py-3 text-center font-semibold">재고</th>
-                <th className="w-[90px] px-2 py-3 text-center font-semibold">품절</th>
-                <th className="w-[52px] px-2 py-3 text-center font-semibold">삭제</th>
+                <th className="w-[60px] px-2 py-3 font-semibold">사진</th>
+                <th className="px-3 py-3 font-semibold">제품명</th>
+                <th className="w-[120px] px-3 py-3 text-right font-semibold">판매가</th>
+                <th className="w-[80px] px-2 py-3 text-center font-semibold">재고</th>
+                <th className="w-[150px] px-3 py-3 font-semibold">상태</th>
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((p) => (
-                <tr
-                  key={p.id}
-                  className={`border-b border-border/60 last:border-0 ${
-                    savingId === p.id ? "opacity-60" : ""
-                  }`}
-                >
-                  <td className="px-3 py-2">
-                    <PartImageCell
-                      part={p}
-                      onPick={(file) => handleImage(p, file)}
-                      onClear={() => handleClearImage(p)}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-[13px] text-text-secondary">
-                    {CATEGORY_META[p.category].label}
-                  </td>
-                  <td className="max-w-0 truncate px-4 py-2 text-sm text-foreground">
-                    {p.name}
-                  </td>
-                  <td className="px-2 py-2 text-center text-[12px] text-text-muted">
-                    {p.grade ?? "—"}
-                  </td>
-                  <td className="px-3 py-2">
-                    {/* 비워두면 할인 표기가 아예 안 나간다 — 없는 할인을 만들지 않기 위해 */}
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="—"
-                      defaultValue={p.listPrice ?? ""}
-                      onBlur={(e) => {
-                        const raw = e.target.value.trim();
-                        const v = raw === "" ? null : Number(raw);
-                        if (v !== null && (!Number.isFinite(v) || v < 0)) return;
-                        if (v !== p.listPrice) patch(p, { listPrice: v });
-                      }}
-                      className="h-8 text-right text-[13px] text-text-muted"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      type="number"
-                      defaultValue={p.price}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value);
-                        if (Number.isFinite(v) && v >= 0 && v !== p.price) {
-                          patch(p, { price: v });
-                        }
-                      }}
-                      className="h-8 text-right text-[13px]"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    {isCompuzone(p) ? (
-                      <span
-                        className={`text-[12px] ${
-                          isStale(p) ? "text-yellow-400" : "text-text-muted"
-                        }`}
-                        title={p.priceCheckedAt ?? "확인한 적 없음"}
-                      >
-                        {agoLabel(p.priceCheckedAt) ?? "미확인"}
+              {pageItems.map((p) => {
+                const checked = selected.has(p.id);
+                return (
+                  <tr
+                    key={p.id}
+                    onClick={() => setEditing(p)}
+                    className={`cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-secondary/60 ${
+                      checked ? "bg-primary/5" : ""
+                    }`}
+                  >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleOne(p.id)}
+                        className="size-4 cursor-pointer accent-primary"
+                        aria-label={`${p.name} 선택`}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <PartImageCell
+                        part={p}
+                        onPick={(file) => handleImage(p, file)}
+                      />
+                    </td>
+                    <td className="max-w-0 px-3 py-2">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {p.name}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-muted">
+                        <span>{CATEGORY_META[p.category].label}</span>
+                        {p.platform !== "common" && (
+                          <span className="uppercase">· {p.platform}</span>
+                        )}
+                        {p.grade && <span>· {p.grade}</span>}
+                      </p>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <span className="font-mono text-[13.5px] text-foreground">
+                        {formatWon(p.price)}
                       </span>
-                    ) : (
-                      <span className="text-[12px] text-text-muted/60" title="컴퓨존 링크가 아니라 자동 확인 대상이 아닙니다">
-                        —
+                      {p.listPrice != null && p.listPrice > p.price && (
+                        <span className="ml-1.5 font-mono text-[11.5px] text-text-muted line-through">
+                          {formatWon(p.listPrice)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2 text-center text-[13px]">
+                      {p.stock === null ? (
+                        <span className="text-text-muted/60">—</span>
+                      ) : (
+                        <span
+                          className={p.stock <= 0 ? "text-yellow-400" : "text-foreground"}
+                        >
+                          {formatNumber(p.stock)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                        {p.soldOut && (
+                          <span className="rounded border border-yellow-500/40 px-1.5 py-0.5 font-medium text-yellow-400">
+                            품절
+                          </span>
+                        )}
+                        {isCompuzone(p) ? (
+                          <span
+                            className={isStale(p) ? "text-yellow-400" : "text-text-muted"}
+                            title={p.priceCheckedAt ?? "확인한 적 없음"}
+                          >
+                            {agoLabel(p.priceCheckedAt) ?? "가격 미확인"}
+                          </span>
+                        ) : (
+                          <span className="text-text-muted/60" title="컴퓨존 링크가 아니라 자동 확인 대상이 아닙니다">
+                            링크 없음
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="—"
-                      defaultValue={p.stock ?? ""}
-                      onBlur={(e) => {
-                        const raw = e.target.value.trim();
-                        if (raw === "") return;
-                        const v = Number(raw);
-                        if (Number.isFinite(v) && v >= 0 && v !== p.stock) {
-                          patch(p, { stock: v });
-                        }
-                      }}
-                      className="h-8 text-center text-[13px]"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={p.soldOut}
-                      onChange={(e) => patch(p, { soldOut: e.target.checked })}
-                      className="size-4 cursor-pointer accent-yellow-500"
-                      aria-label={`${p.name} 품절 여부`}
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(p)}
-                      disabled={savingId === p.id}
-                      aria-label={`${p.name} 삭제`}
-                      title="이 부품을 목록에서 지웁니다"
-                      className="cursor-pointer text-text-muted transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {filtered.length > 0 && (
@@ -926,16 +953,20 @@ export default function AdminPartsPage() {
       )}
 
       <p className="mt-4 text-[13px] leading-relaxed text-text-muted">
-        <strong className="text-text-secondary">사진 바꾸기</strong> — 왼쪽 사진을 누르면
-        파일 선택이 열립니다. 고르면 그 자리에서 바뀝니다(5MB 이하 이미지). 사진 위로
-        마우스를 올리면 뜨는 × 로 지울 수 있습니다.
+        <strong className="text-text-secondary">줄을 누르면 상세가 열립니다</strong> —
+        제품명·분류·가격·정가·재고·품절·매입처 링크를 한 화면에서 고치고, 거기서 삭제도
+        됩니다. 사진은 목록에서 바로 누르셔도 바뀝니다(5MB 이하 이미지, × 로 지움).
         <br />
-        <strong className="text-text-secondary">부품 추가·삭제</strong> — 오른쪽 위{" "}
-        <strong className="text-text-secondary">부품 추가</strong> 버튼으로 한 건씩 넣고,
-        각 줄 맨 오른쪽 휴지통으로 지웁니다. 여러 건을 한 번에 넣으려면 아래 CSV를 쓰세요.
-        지운 부품이 들어간 <strong className="text-text-secondary">이미 발행한 견적서는
-        그대로 남습니다</strong>(품목명·단가를 따로 저장해 둡니다). 다만 추천 PC에 들어
-        있으면 그 구성에서는 빠지므로, 삭제할 때 알려드립니다.
+        <strong className="text-text-secondary">여러 개 한 번에</strong> — 왼쪽 체크박스로
+        고르면 위에 막대가 뜹니다. 고른 것만 가격 갱신·품절 처리·삭제할 수 있고, 머리글
+        체크박스는 <strong className="text-text-secondary">지금 페이지에 보이는 것만</strong>{" "}
+        고릅니다(안 보이는 수백 건이 딸려오지 않게).
+        <br />
+        <strong className="text-text-secondary">부품 추가</strong>는 오른쪽 위 버튼, 여러 건을
+        한꺼번에 넣으려면 아래 CSV를 쓰세요. 지운 부품이 들어간{" "}
+        <strong className="text-text-secondary">이미 발행한 견적서는 그대로 남습니다</strong>
+        (품목명·단가를 따로 저장해 둡니다). 다만 추천 PC에 들어 있으면 그 구성에서는
+        빠지므로, 삭제할 때 알려드립니다.
         <br />
         <br />
         <strong className="text-text-secondary">새로고침</strong> — 목록을 다시 읽고,
@@ -965,12 +996,28 @@ export default function AdminPartsPage() {
         . 가격이 바뀐 항목은 자동으로 이력에 남습니다.
       </p>
 
-      {showAdd && (
-        <AddPartDialog
-          onClose={() => setShowAdd(false)}
-          onSaved={async () => {
-            setShowAdd(false);
-            await reload();
+      {editing && (
+        <PartEditorDialog
+          part={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setEditing(null);
+            // 목록에 있으면 그 자리를 갈아끼우고, 새로 만든 것이면 다시 읽는다
+            setParts((prev) =>
+              prev.some((p) => p.id === saved.id)
+                ? prev.map((p) => (p.id === saved.id ? saved : p))
+                : prev
+            );
+            if (editing === "new") void reload();
+          }}
+          onDeleted={(id) => {
+            setEditing(null);
+            setParts((prev) => prev.filter((p) => p.id !== id));
+            setSelected((prev) => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+            });
           }}
         />
       )}
@@ -993,240 +1040,6 @@ export default function AdminPartsPage() {
  * 썸네일을 누르면 바로 파일 선택이 열린다 — 대표가 잘못 붙은 사진을 한 장씩
  * 갈아끼우는 게 주 용도라, 편집 화면을 따로 열지 않고 그 자리에서 끝낸다.
  */
-function PartImageCell({
-  part,
-  onPick,
-  onClear,
-}: {
-  part: Part;
-  onPick: (file: File) => void;
-  onClear: () => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className="group relative w-fit">
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onPick(f);
-          e.target.value = "";
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => ref.current?.click()}
-        title={part.imageUrl ? "눌러서 사진 바꾸기" : "눌러서 사진 넣기"}
-        className="block cursor-pointer rounded-md ring-offset-2 ring-offset-card transition-shadow hover:ring-2 hover:ring-primary"
-      >
-        {part.imageUrl ? (
-          <PartImage
-            src={part.imageUrl}
-            alt={part.name}
-            category={part.category}
-            size={40}
-          />
-        ) : (
-          <span className="flex size-10 items-center justify-center rounded-md border border-dashed border-border-strong text-text-muted">
-            <ImagePlus className="size-4" />
-          </span>
-        )}
-      </button>
-      {part.imageUrl && (
-        <button
-          type="button"
-          onClick={onClear}
-          aria-label={`${part.name} 사진 지우기`}
-          title="사진 지우기"
-          className="absolute -right-1.5 -top-1.5 hidden size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white group-hover:flex"
-        >
-          ×
-        </button>
-      )}
-    </div>
-  );
-}
-
-function AddPartDialog({
-  onClose,
-  onSaved,
-}: {
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [form, setForm] = useState({
-    category: "" as "" | PartCategory,
-    platform: "common" as PartPlatform,
-    name: "",
-    price: "",
-    listPrice: "",
-    partNo: "",
-    link: "",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const platformBound = form.category === "cpu" || form.category === "mainboard";
-
-  async function save() {
-    const price = parseWon(form.price);
-    if (!form.category) {
-      toast.error("분류를 선택해주세요");
-      return;
-    }
-    if (!form.name.trim()) {
-      toast.error("제품명을 입력해주세요");
-      return;
-    }
-    if (price === null) {
-      toast.error("판매가를 숫자로 입력해주세요");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await upsertPart({
-        partNo: form.partNo.trim() ? Number(form.partNo.replace(/[^\d]/g, "")) : null,
-        category: form.category,
-        platform: platformBound ? form.platform : "common",
-        name: form.name.trim(),
-        price,
-        listPrice: parseWon(form.listPrice),
-        link: form.link.trim() || null,
-      });
-      toast.success("부품을 저장했습니다");
-      onSaved();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "저장 실패");
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>부품 추가</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>분류 *</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, category: v as PartCategory }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_ORDER.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {CATEGORY_META[c].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>플랫폼</Label>
-              <Select
-                value={form.platform}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, platform: v as PartPlatform }))
-                }
-                disabled={!platformBound}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amd">AMD</SelectItem>
-                  <SelectItem value="intel">INTEL</SelectItem>
-                  <SelectItem value="common">공용</SelectItem>
-                </SelectContent>
-              </Select>
-              {!platformBound && (
-                <p className="text-[11.5px] text-text-muted">
-                  CPU·마더보드만 플랫폼을 탑니다
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label>제품명 *</Label>
-            <Input
-              autoFocus
-              placeholder="예) AMD Ryzen™ 5 Vermeer 5600"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="grid gap-1.5">
-              <Label>판매가 *</Label>
-              <Input
-                inputMode="numeric"
-                placeholder="170000"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>정가</Label>
-              <Input
-                inputMode="numeric"
-                placeholder="비우면 할인 표기 없음"
-                value={form.listPrice}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, listPrice: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>고유번호</Label>
-              <Input
-                inputMode="numeric"
-                placeholder="선택"
-                value={form.partNo}
-                onChange={(e) => setForm((f) => ({ ...f, partNo: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label>매입처 링크</Label>
-            <Input
-              placeholder="https://www.compuzone.co.kr/..."
-              value={form.link}
-              onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            취소
-          </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />}
-            저장
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function Stat({
   label,
   value,
